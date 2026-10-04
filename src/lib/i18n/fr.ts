@@ -979,4 +979,5 @@ export const fr: Record<string, string> = {
   "Usual split": "Répartition habituelle",
   "Used for each new expense. Past ones keep their split.": "Utilisée pour chaque nouvelle dépense. Les anciennes gardent la leur.",
   "The total must be 100%": "Le total doit faire 100 %",
+  "Still asleep": "Dort encore",
 };
