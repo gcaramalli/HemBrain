@@ -979,4 +979,5 @@ export const sv: Record<string, string> = {
   "Usual split": "Vanlig fördelning",
   "Used for each new expense. Past ones keep their split.": "Används för varje ny utgift. Tidigare behåller sin fördelning.",
   "The total must be 100%": "Summan måste vara 100 %",
+  "Still asleep": "Sover fortfarande",
 };

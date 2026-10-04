@@ -88,9 +88,10 @@ export default function SleepPage() {
       setEditing({ kind: "night", starts_at: at(addDays(today, -1), avgBed ?? "19:00").toISOString(), ends_at: (wake > today ? round5(today) : wake).toISOString(), ...blank });
     }
   };
+  // A nap usually gets logged as it starts: now, still asleep. For one already
+  // over, "Woke up" in the form adds the end.
   function logNap() {
-    const now = new Date();
-    setEditing({ kind: "nap", starts_at: round5(new Date(now.getTime() - 3600000)).toISOString(), ends_at: round5(now).toISOString(), ...blank });
+    setEditing({ kind: "nap", starts_at: round5(new Date()).toISOString(), ends_at: null, ...blank });
   }
   // Wake-up of the sleep in progress, set (and adjustable) in the form.
   const setWakeUp = () => current && setEditing({ ...current, ends_at: round5(new Date()).toISOString() });
@@ -277,11 +278,32 @@ function SleepForm({ initial, onDone }: { initial: Draft; onDone: () => void }) 
         <span className="label">{t("Fell asleep")}</span>
         <input className="input" type="datetime-local" required value={toLocalInput(d.starts_at)} onChange={(e) => e.target.value && set("starts_at", new Date(e.target.value).toISOString())} />
       </label>
-      <label>
-        <span className="label">{t("Woke up")}</span>
-        <input className="input" type="datetime-local" value={d.ends_at ? toLocalInput(d.ends_at) : ""} onChange={(e) => set("ends_at", e.target.value ? new Date(e.target.value).toISOString() : null)} />
-        <span className="mt-1 block text-xs text-muted">{t("Leave empty if still asleep.")}</span>
-      </label>
+      {/* A toggle, not an empty field: iPhones can't clear a date-time input
+          (their "Reset" puts the old value back). */}
+      <div className="grid grid-cols-2 rounded-full bg-accent-soft p-1 text-sm">
+        {([false, true] as const).map((awake) => (
+          <button
+            type="button"
+            key={String(awake)}
+            onClick={() => {
+              if (!awake) return set("ends_at", null);
+              if (d.ends_at) return;
+              // Woke up now, or an hour after the start when that is still to come.
+              const now = new Date(Math.round(Date.now() / 300000) * 300000);
+              set("ends_at", (now.getTime() > new Date(d.starts_at).getTime() ? now : new Date(new Date(d.starts_at).getTime() + 3600000)).toISOString());
+            }}
+            className={`min-h-9 rounded-full ${!!d.ends_at === awake ? "bg-[var(--pill)] font-semibold shadow-sm" : "text-muted"}`}
+          >
+            {awake ? t("Woke up") : t("Still asleep")}
+          </button>
+        ))}
+      </div>
+      {d.ends_at && (
+        <label>
+          <span className="label">{t("Woke up")}</span>
+          <input className="input" type="datetime-local" required value={toLocalInput(d.ends_at)} onChange={(e) => e.target.value && set("ends_at", new Date(e.target.value).toISOString())} />
+        </label>
+      )}
       {d.kind === "night" && (
         <label>
           <span className="label">{t("Night wakings")}</span>
