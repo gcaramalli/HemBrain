@@ -165,6 +165,8 @@ Rules of thumb:
   that is also a speech bubble with three dots (blue, pink, orange = the family, and Claude thinking), on night blue `#111722`.
   Same mark as the Home tab icon (`HemHome` in `src/lib/modules.ts`). The dots are the signature: `ThinkingDots`
   (`src/components/thinking-dots.tsx`) pulses them whenever the app reads or works something out.
+  Pull-to-refresh (`src/components/pull-to-refresh.tsx`, installed app only: Safari has its own) shows them too, and
+  remounts `<main>` (a new key in `AppShell`) so every screen reloads its data.
 - Optional server env: `ANTHROPIC_API_KEY` (receipt scan + "type it" event entry, `src/lib/ai.ts`, on the cheapest model,
   Haiku; advice like sleep or meals goes through the family's own Claude + the connector, not the API),
   `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` (reminders, `src/lib/push.ts`) and `CRON_SECRET`
