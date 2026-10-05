@@ -2,15 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { MODULES } from "@/lib/modules";
 import { useFamily } from "./family-context";
 import { GiftInbox } from "./gift-inbox";
+import { PullToRefresh } from "./pull-to-refresh";
 import { ToastProvider } from "./toast";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { profile, family, kids, me, t } = useFamily();
+  const [generation, setGeneration] = useState(0);
+  const refresh = useCallback(() => setGeneration((g) => g + 1), []);
   // Service worker: needed for reminders (push notifications).
   useEffect(() => {
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
@@ -70,7 +73,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Link>
         </header>
 
-        <main className="flex-1 px-4 pb-32 pt-2">{children}</main>
+        <PullToRefresh onRefresh={refresh} />
+        {/* A new key mounts the page again: every screen reloads its data. */}
+        <main key={generation} className="flex-1 px-4 pb-32 pt-2">{children}</main>
 
         <GiftInbox />
 
