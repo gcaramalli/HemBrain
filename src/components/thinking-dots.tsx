@@ -7,7 +7,7 @@ export function ThinkingDots({ size = 10, label, still }: { size?: number; label
   return (
     <span role="status" aria-label={label} className="inline-flex items-center" style={{ gap: size * 0.45 }}>
       {DOTS.map((c, i) => (
-        <span key={c} className={`${still ? "" : "thinking-dot "}rounded-full`} style={{ width: size, height: size, background: c, animationDelay: `${i * 160}ms` }} />
+        <span key={c} className={`${still ? "" : "thinking-dot "}rounded-full`} style={{ width: size, height: size, background: c, animationDelay: `${i * 150}ms` }} />
       ))}
     </span>
   );
