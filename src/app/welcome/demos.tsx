@@ -1,4 +1,6 @@
-import { Baby, CalendarDays, Camera, CookingPot, Sparkles, UserRound } from "lucide-react";
+import { Baby, CalendarDays, Camera, CookingPot, UserRound } from "lucide-react";
+import { ThinkingDots } from "@/components/thinking-dots";
+import { ChatPlayer, Step } from "./chat-player";
 import world from "@/lib/world-map.json";
 import { BCP47, type Locale, type T } from "@/lib/i18n";
 import { MODULES } from "@/lib/modules";
@@ -87,41 +89,50 @@ export function Phone({ t }: { t: T }) {
   );
 }
 
-// A conversation with Claude, the connector doing the filing.
+// A conversation with Hem (in Claude or ChatGPT), the connector doing the
+// filing. Played message by message, Hem's dots before each answer.
 export function Chat({ t }: { t: T }) {
   return (
-    <div className="card flex flex-col gap-4 p-4 sm:p-5">
+    <ChatPlayer className="card flex flex-col gap-4 p-4 sm:p-5">
       <div className="flex items-center gap-2 text-sm font-semibold">
-        <span className="flex h-7 w-7 items-center justify-center rounded-full" style={{ background: "color-mix(in srgb, #d97757 18%, transparent)", color: "#d97757" }}>
-          <Sparkles size={15} strokeWidth={2.25} />
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#111722]">
+          <ThinkingDots size={4} still />
         </span>
-        Claude
-        <span className="chip ml-auto">Hembrain</span>
+        Hem
+        <span className="chip ml-auto">Claude · ChatGPT</span>
       </div>
 
-      <Bubble>{t("Sam picks up Leo on Thursday at 4")}</Bubble>
-      <Filed>
-        <span className="h-8 w-1 rounded-full" style={{ background: SAM.color }} />
-        <div>
-          <p className="text-sm font-medium">{t("Pick-up Leo")} · {t("Thu")} 16:00</p>
-          <Who p={SAM} />
-        </div>
-        <span className="ml-auto text-xs text-muted">{t("Added to the calendar")}</span>
-      </Filed>
+      <Step n={0}><Bubble>{t("Sam picks up Leo on Thursday at 4")}</Bubble></Step>
+      <Step n={1} typing>
+        <Filed>
+          <span className="h-8 w-1 rounded-full" style={{ background: SAM.color }} />
+          <div>
+            <p className="text-sm font-medium">{t("Pick-up Leo")} · {t("Thu")} 16:00</p>
+            <Who p={SAM} />
+          </div>
+          <span className="ml-auto text-xs text-muted">{t("Added to the calendar")}</span>
+        </Filed>
+      </Step>
 
-      <Bubble>
-        <span className="inline-flex items-center gap-2"><Camera size={16} /> receipt.jpg</span>
-      </Bubble>
-      <Filed>
-        <span className="text-xl">🧾</span>
-        <p className="text-sm"><b>{t("14 items logged")}</b> · ICA · 486 kr</p>
-      </Filed>
+      <Step n={2}>
+        <Bubble>
+          <span className="inline-flex items-center gap-2"><Camera size={16} /> receipt.jpg</span>
+        </Bubble>
+      </Step>
+      <Step n={3} typing>
+        <Filed>
+          <span className="text-xl">🧾</span>
+          <p className="text-sm"><b>{t("14 items logged")}</b> · ICA · 486 kr</p>
+        </Filed>
+      </Step>
 
-      <Bubble>{t("What should we cook tonight?")}</Bubble>
-      <p className="landing-reveal max-w-[85%] text-sm leading-relaxed">
-        {t("No fish yet this week: how about salmon with dill potatoes? You bought dill on Monday, and Leo loved it last time.")}
-      </p>
-    </div>
+      <Step n={4}><Bubble>{t("What should we cook tonight?")}</Bubble></Step>
+      <Step n={5} typing>
+        <p className="landing-reveal max-w-[85%] text-sm leading-relaxed">
+          {t("No fish yet this week: how about salmon with dill potatoes? You bought dill on Monday, and Leo loved it last time.")}
+        </p>
+      </Step>
+    </ChatPlayer>
   );
 }
 

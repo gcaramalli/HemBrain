@@ -161,6 +161,12 @@ Rules of thumb:
   the page fading into the background beneath it. A person shows as a dot in their colour + name (`MemberBadge`).
 - Icons: `lucide-react` line icons for the interface (tabs, buttons, section titles); emoji only for what
   people choose themselves (a kid's emoji, private tiles, gifts).
+- Hem: the assistant's name in the app (Hembrain's personality, whatever model runs behind it: the family's Claude or
+  ChatGPT through the connector today, an in-app API later). UI text says "Hem" where the assistant does or advises
+  something ("Ask Hem…", "Hem reads it"), and "Claude" / "ChatGPT" only for the apps you connect. French is tu in the
+  app, vous on the welcome page. Hem's face is the three dots: still next to what Hem guesses or advises (no ✨ sparkles),
+  bouncing while it works. The connector's instructions (`buildInstructions`) route "Hem, …" / "ask Hem" to it; name the
+  connector "Hem" in Claude.
 - Brand: the app icon (`src/app/icon.svg`, PNGs in `src/app/apple-icon.png` / `public/icon-*.png`, `favicon.ico`) is a house
   that is also a speech bubble with three dots (blue, pink, orange = the family, and Claude thinking), on night blue `#111722`.
   Same mark as the Home tab icon (`HemHome` in `src/lib/modules.ts`). The dots are the signature: `ThinkingDots`

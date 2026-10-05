@@ -87,7 +87,7 @@ export function MealsPanel() {
       ) : meals.length === 0 ? (
         <div className="card text-center text-muted">
           <Utensils size={28} className="mx-auto" />
-          <p className="mt-2">{t("Nothing logged yet. Tell Claude “we had salmon and potatoes tonight”, or add it here. After a week you'll see how balanced it was.")}</p>
+          <p className="mt-2">{t("Nothing logged yet. Tell Hem “we had salmon and potatoes tonight”, or add it here. After a week you'll see how balanced it was.")}</p>
         </div>
       ) : (
         <section className="card flex flex-col gap-2">

@@ -28,8 +28,8 @@ export function ClaudeConnector() {
   const [copied, setCopied] = useState(false);
   const [shownFor, setShownFor] = useState<App>("Claude");
   const steps: Record<App, string> = {
-    Claude: t("In Claude: Settings → Connectors → Add custom connector → paste your link → Authentication: none."),
-    ChatGPT: t("In ChatGPT (web, paid plan): Settings → Apps & Connectors → Advanced → turn on Developer mode, then Create → paste your link → Authentication: none. It then works on your phone too."),
+    Claude: t("In Claude: Settings → Connectors → Add custom connector → name it Hem, paste your link → Authentication: none."),
+    ChatGPT: t("In ChatGPT (web, paid plan): Settings → Apps & Connectors → Advanced → turn on Developer mode, then Create → name it Hem, paste your link → Authentication: none. It then works on your phone too."),
   };
   const app = naming ?? shownFor;
 
@@ -73,7 +73,7 @@ export function ClaudeConnector() {
     <section className="card flex flex-col gap-3">
       <h2 className="h2">{t("Connect Claude or ChatGPT")}</h2>
       <p className="text-sm text-muted">
-        {t("Lets your AI app read and add to the calendar, lists, recipes and notes, as you.")} {(naming || newUrl) && steps[app]}
+        {t("Lets Hem read and add to the calendar, lists, recipes and notes from your AI app, as you. Then just talk to Hem.")} {(naming || newUrl) && steps[app]}
       </p>
 
       {newUrl && (

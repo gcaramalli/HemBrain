@@ -1,6 +1,6 @@
 "use client";
 
-import { Sparkles } from "lucide-react";
+import { ThinkingDots } from "@/components/thinking-dots";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useFamily } from "@/components/family-context";
 import { useKid } from "@/components/kid-context";
@@ -100,8 +100,8 @@ export default function KidFoodPage() {
       )}
 
       <p className="flex items-start gap-2 rounded-xl bg-accent-soft px-4 py-3 text-sm">
-        <Sparkles size={16} className="mt-0.5 shrink-0" />
-        <span>{t("Ask Claude “what should {name} eat tonight?”: it sees what {name} ate and liked here.", { name: kid.name })}</span>
+        <span className="mt-1.5 shrink-0"><ThinkingDots size={6} still /></span>
+        <span>{t("Ask Hem “what should {name} eat tonight?”: it sees what {name} ate and liked here.", { name: kid.name })}</span>
       </p>
 
       {byDay.length === 0 && <p className="card text-center text-muted">{t("Nothing logged yet. Family meals count too; mark here how {name} took them.", { name: kid.name })}</p>}

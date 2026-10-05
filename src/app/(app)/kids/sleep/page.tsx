@@ -1,6 +1,7 @@
 "use client";
 
-import { Moon, Sparkles, Sun } from "lucide-react";
+import { ThinkingDots } from "@/components/thinking-dots";
+import { Moon, Sun } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useFamily } from "@/components/family-context";
 import { useKid } from "@/components/kid-context";
@@ -169,8 +170,8 @@ export default function SleepPage() {
       )}
 
       <p className="flex items-start gap-2 rounded-xl bg-accent-soft px-4 py-3 text-sm">
-        <Sparkles size={16} className="mt-0.5 shrink-0" />
-        <span>{t("Ask Claude “when should {name} go to bed tonight?”: it reads the last days here.", { name: kid.name })}</span>
+        <span className="mt-1.5 shrink-0"><ThinkingDots size={6} still /></span>
+        <span>{t("Ask Hem “when should {name} go to bed tonight?”: it reads the last days here.", { name: kid.name })}</span>
       </p>
 
       {/* Newest first, days and the entries within each day alike. */}
