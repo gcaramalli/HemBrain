@@ -1,5 +1,6 @@
 "use client";
 
+import { ThinkingDots } from "@/components/thinking-dots";
 import { Camera, Copy, FileText, Lock, Paperclip, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ConfirmButton } from "@/components/confirm-button";
@@ -289,7 +290,10 @@ function AddSheet({ open, onClose, onDraft }: { open: boolean; onClose: () => vo
   return (
     <Sheet open={open} onClose={onClose} title={t("Add a paper")}>
       {state === "reading" ? (
-        <p className="py-8 text-center text-muted">{t("Reading the document…")}</p>
+        <p className="flex flex-col items-center gap-3 py-8 text-center text-muted">
+          <ThinkingDots size={12} />
+          {t("Reading the document…")}
+        </p>
       ) : (
         <div className="flex flex-col gap-3">
           <button className="btn" onClick={() => input.current?.click()}>

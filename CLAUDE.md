@@ -161,6 +161,10 @@ Rules of thumb:
   the page fading into the background beneath it. A person shows as a dot in their colour + name (`MemberBadge`).
 - Icons: `lucide-react` line icons for the interface (tabs, buttons, section titles); emoji only for what
   people choose themselves (a kid's emoji, private tiles, gifts).
+- Brand: the app icon (`src/app/icon.svg`, PNGs in `src/app/apple-icon.png` / `public/icon-*.png`, `favicon.ico`) is a house
+  that is also a speech bubble with three dots (blue, pink, orange = the family, and Claude thinking), on night blue `#111722`.
+  Same mark as the Home tab icon (`HemHome` in `src/lib/modules.ts`). The dots are the signature: `ThinkingDots`
+  (`src/components/thinking-dots.tsx`) pulses them whenever the app reads or works something out.
 - Optional server env: `ANTHROPIC_API_KEY` (receipt scan + "type it" event entry, `src/lib/ai.ts`, on the cheapest model,
   Haiku; advice like sleep or meals goes through the family's own Claude + the connector, not the API),
   `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` (reminders, `src/lib/push.ts`) and `CRON_SECRET`

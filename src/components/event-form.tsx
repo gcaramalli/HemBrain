@@ -1,5 +1,6 @@
 "use client";
 
+import { ThinkingDots } from "@/components/thinking-dots";
 import { useState } from "react";
 import { useFamily } from "./family-context";
 import { MemberSelect } from "./member-select";
@@ -200,7 +201,7 @@ export function EventForm({ initial, onDone }: { initial: Draft; onDone: () => v
             enterKeyHint="go"
           />
           <button className="btn-ghost shrink-0" disabled={thinking || !quick.trim()} aria-label={t("Fill in")}>
-            {thinking ? "…" : "✨"}
+            {thinking ? <ThinkingDots size={6} /> : "✨"}
           </button>
         </form>
       )}

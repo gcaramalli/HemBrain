@@ -1,4 +1,4 @@
-import { Baby, CalendarDays, Camera, CookingPot, House, Sparkles, UserRound } from "lucide-react";
+import { Baby, CalendarDays, Camera, CookingPot, Sparkles, UserRound } from "lucide-react";
 import world from "@/lib/world-map.json";
 import { BCP47, type Locale, type T } from "@/lib/i18n";
 import { MODULES } from "@/lib/modules";
@@ -32,7 +32,7 @@ export function Phone({ t }: { t: T }) {
     { time: "16:00", title: t("Pick-up Leo"), p: SAM },
   ];
   const tabs = [
-    { Icon: House, color: MODULES.today.color, on: true },
+    { Icon: MODULES.today.Icon, color: MODULES.today.color, on: true },
     { Icon: CalendarDays, color: MODULES.calendar.color },
     { Icon: Baby, color: MODULES.kids.color },
     { Icon: CookingPot, color: MODULES.kitchen.color },
