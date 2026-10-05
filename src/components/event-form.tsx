@@ -201,7 +201,7 @@ export function EventForm({ initial, onDone }: { initial: Draft; onDone: () => v
             enterKeyHint="go"
           />
           <button className="btn-ghost shrink-0" disabled={thinking || !quick.trim()} aria-label={t("Fill in")}>
-            {thinking ? <ThinkingDots size={6} /> : "✨"}
+            <ThinkingDots size={6} still={!thinking} />
           </button>
         </form>
       )}

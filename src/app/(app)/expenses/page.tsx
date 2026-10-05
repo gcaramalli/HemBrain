@@ -171,7 +171,7 @@ export default function ExpensesPage() {
 
       {rows?.length === 0 && (
         <p className="rounded-[22px] border border-dashed border-border p-4 text-sm text-muted">
-          {t("Log what one of you paid for the family (toilet paper, the plumber, a gift) and the app keeps the balance. Or tell Claude: “I paid 89 kr for toilet paper”.")}
+          {t("Log what one of you paid for the family (toilet paper, the plumber, a gift) and the app keeps the balance. Or tell Hem: “I paid 89 kr for toilet paper”.")}
         </p>
       )}
 

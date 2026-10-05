@@ -1,5 +1,8 @@
 # Using Hembrain from the Claude app
 
+In the app, the assistant is called **Hem**: Hembrain's personality, whatever model runs behind it (Claude today
+through this connector; an in-app API later). Name the connector **Hem** so "Hem, add milk" or "ask Hem…" reaches it.
+
 Talk to Claude ("add nappies and milk", "Jennie picks up Charlie Thursday at 16:00", "what can we cook
 tonight?") and it writes into the app: calendar, lists, recipes and notes.
 
@@ -22,10 +25,10 @@ family to use. Nothing to configure in Vercel.
 
 1. In the app: **Profile → Connect Claude → + Create a Claude link** → copy the link (shown only once).
 2. In Claude (app or claude.ai): **Settings → Connectors → Add custom connector**
-   - Name: `Hembrain`
+   - Name: `Hem`
    - URL: paste the link
    - Authentication: **None**, no headers
-3. Test in a new conversation: "What's on the calendar this week?"
+3. Test in a new conversation: "Hem, what's on the calendar this week?"
 
 ⚠️ The link works like a password (it acts as you, in your family). Paste it only into Claude — never in a
 chat, note or screenshot. If it leaks: Profile → Connect Claude → **Revoke**, then create a new one.

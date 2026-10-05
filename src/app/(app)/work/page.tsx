@@ -364,7 +364,7 @@ function PeopleTab({ data, onOpen }: { data: Data; onOpen: (o: Open) => void }) 
           </section>
         );
       })}
-      {!data.people.length && <p className="text-sm text-muted">{t("Add your manager, your team and the people you work with. Or tell Claude about them.")}</p>}
+      {!data.people.length && <p className="text-sm text-muted">{t("Add your manager, your team and the people you work with. Or tell Hem about them.")}</p>}
     </div>
   );
 }
@@ -443,7 +443,7 @@ function MeTab({ data, onOpen, onChanged }: { data: Data; onOpen: (o: Open) => v
       )}
       <div className="card">
         <ItemList title={t("My to-do")} items={todo} {...list} />
-        {!todo.length && <p className="text-sm text-muted">{t("Nothing to do yourself. Add it above, or tell Claude.")}</p>}
+        {!todo.length && <p className="text-sm text-muted">{t("Nothing to do yourself. Add it above, or tell Hem.")}</p>}
       </div>
       {unsorted.length > 0 && (
         <div className="card">

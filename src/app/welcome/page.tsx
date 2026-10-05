@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import { ThinkingDots } from "@/components/thinking-dots";
 import Link from "next/link";
 import { headers } from "next/headers";
-import { ArrowRight, BellRing, Globe, HeartHandshake, KeyRound, Languages, Lock, Moon, Smartphone, Sparkles, UsersRound } from "lucide-react";
+import { ArrowRight, BellRing, Globe, HeartHandshake, KeyRound, Languages, Lock, Moon, Smartphone, UsersRound } from "lucide-react";
 import { isLocale, LOCALES, translator, type Locale } from "@/lib/i18n";
 import { MODULES, type ModuleId } from "@/lib/modules";
 import { ModuleIcon } from "@/components/module-icon";
@@ -17,7 +18,7 @@ const TITLE = "Hembrain — the family brain";
 
 export const metadata: Metadata = {
   title: TITLE,
-  description: "Calendar, kids, kitchen, travels and the family's memory in one place, and Claude can fill it in for you. Create your family in a minute.",
+  description: "Calendar, kids, kitchen, travels and the family's memory in one place, and Hem, your assistant in Claude or ChatGPT, fills it in for you. Create your family in a minute.",
 };
 
 async function pickLocale(lang: string | string[] | undefined): Promise<Locale> {
@@ -52,7 +53,7 @@ const STEPS = [
   { title: "Create your family", body: "Choose a family name, then enter your first name, email and a password. You become the family's admin." },
   { title: "Confirm and sign in", body: "If we send you a confirmation email, open the link, then sign in." },
   { title: "Add your people", body: "Tap your avatar, top right, then Family: add the children (no account needed) and invite your partner with a personal link." },
-  { title: "Make it yours", body: "Add Hembrain to your home screen, turn on the evening reminder and connect Claude in Settings → Reminders & AI." },
+  { title: "Make it yours", body: "Add Hembrain to your home screen, turn on the evening reminder and connect Hem to Claude or ChatGPT in Settings → Reminders & AI." },
 ];
 
 export default async function WelcomePage({ searchParams }: PageProps<"/welcome">) {
@@ -72,7 +73,8 @@ export default async function WelcomePage({ searchParams }: PageProps<"/welcome"
       <nav className="sticky top-0 z-30 backdrop-blur-xl [background:color-mix(in_srgb,var(--background)_72%,transparent)]">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <Link href={`/welcome?lang=${locale}`} className="flex items-center gap-2 text-[1.05rem] font-bold tracking-tight">
-            <span className="text-xl">🏡</span> Hembrain
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icon.svg" alt="" width={28} height={28} className="rounded-[8px]" /> Hembrain
           </Link>
           <div className="flex items-center gap-1 text-sm sm:gap-3">
             <div className="hidden items-center gap-0.5 rounded-full bg-accent-soft p-0.5 sm:flex">
@@ -97,14 +99,14 @@ export default async function WelcomePage({ searchParams }: PageProps<"/welcome"
       <header className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 pt-10 pb-16 sm:px-6 lg:grid-cols-[1.1fr_1fr] lg:pt-20 lg:pb-24">
         <div className="flex flex-col items-start gap-6">
           <span className="landing-in inline-flex items-center gap-2 rounded-full bg-surface px-3 py-1.5 text-xs font-semibold" style={{ boxShadow: "var(--lift)" }}>
-            <Sparkles size={14} style={{ color: MODULES.calendar.color }} />
+            <ThinkingDots size={6} still />
             {t("New: sleep, meals, travels and a work space")}
           </span>
           <h1 className="landing-in text-[3.1rem] leading-[0.98] font-bold tracking-[-0.045em] text-balance sm:text-[4.6rem]" style={{ animationDelay: "80ms" }}>
             {t("The family")} <span className="landing-gradient">{t("brain.")}</span>
           </h1>
           <p className="landing-in max-w-xl text-lg text-muted text-pretty sm:text-xl" style={{ animationDelay: "160ms" }}>
-            {t("Calendar, kids, kitchen, travels and everything you need to remember, in one place the whole family shares. Just tell Claude, it files it for you.")}
+            {t("Calendar, kids, kitchen, travels and everything you need to remember, in one place the whole family shares. Just tell Hem, it files it for you.")}
           </p>
           <div className="landing-in flex flex-wrap gap-3" style={{ animationDelay: "240ms" }}>
             <Link href="/signup" className="btn px-6 text-base">
@@ -149,13 +151,13 @@ export default async function WelcomePage({ searchParams }: PageProps<"/welcome"
       </section>
 
       <main className="relative mx-auto flex max-w-6xl flex-col gap-28 px-4 py-24 sm:px-6">
-        {/* Claude */}
+        {/* Hem, the family's assistant (through Claude or ChatGPT) */}
         <section className="grid items-center gap-10 lg:grid-cols-2">
           <div className="flex flex-col gap-5">
-            <Eyebrow color="#d97757">{t("Works with Claude and ChatGPT")}</Eyebrow>
+            <Eyebrow color="var(--foreground)"><ThinkingDots size={6} still /> {t("Meet Hem, in Claude or ChatGPT")}</Eyebrow>
             <h2 className="landing-h2">{t("No forms. Just say it.")}</h2>
             <p className="text-lg text-muted text-pretty">
-              {t("Connect your own Claude once. Then say it, paste it or snap a photo: an appointment, a receipt, a list of twenty weddings. Hembrain files it in the right place, and Claude answers from what your family actually knows.")}
+              {t("Hem is the family's assistant. Connect it once to your Claude or ChatGPT, then say it, paste it or snap a photo: an appointment, a receipt, a list of twenty weddings. Hem files it in the right place and answers from what your family actually knows.")}
             </p>
             <ul className="flex flex-col gap-2.5 text-[0.95rem]">
               {[

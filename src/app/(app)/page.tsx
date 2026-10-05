@@ -168,7 +168,7 @@ export default function HomePage() {
           module="meals"
           title={t("Meals")}
           empty={mealCount === 0}
-          sub={mealCount === 0 ? t("Log what you eat, Claude balances the week") : t("What we ate")}
+          sub={mealCount === 0 ? t("Log what you eat, Hem balances the week") : t("What we ate")}
         />
         <HubTile
           href={noteCount === 0 && occasions.length > 0 ? "/brain?tab=dates" : "/brain"}
@@ -179,7 +179,7 @@ export default function HomePage() {
             noteCount === null
               ? "…"
               : noteCount === 0 && occasions.length === 0
-                ? t("Birthdays, weddings, preschool address: what Claude should know")
+                ? t("Birthdays, weddings, preschool address: what Hem should know")
                 : [occasions.length === 1 ? t("1 date") : t("{n} dates", { n: occasions.length }), noteCount === 1 ? t("1 note") : t("{n} notes", { n: noteCount })].join(" · ")
           }
         />
@@ -189,7 +189,7 @@ export default function HomePage() {
           module="papers"
           title={t("Papers")}
           empty={paperCount === 0}
-          sub={paperCount === 0 ? t("Contracts, insurance, warranties: Claude reminds you before they end") : t("Contracts, insurance, receipts, IDs")}
+          sub={paperCount === 0 ? t("Contracts, insurance, warranties: Hem reminds you before they end") : t("Contracts, insurance, receipts, IDs")}
         />
         <TravelsTile />
       </nav>

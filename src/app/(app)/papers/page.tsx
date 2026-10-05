@@ -1,7 +1,7 @@
 "use client";
 
 import { ThinkingDots } from "@/components/thinking-dots";
-import { Camera, Copy, FileText, Lock, Paperclip, Sparkles } from "lucide-react";
+import { Camera, Copy, FileText, Lock, Paperclip } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ConfirmButton } from "@/components/confirm-button";
 import { useFamily } from "@/components/family-context";
@@ -297,12 +297,12 @@ function AddSheet({ open, onClose, onDraft }: { open: boolean; onClose: () => vo
       ) : (
         <div className="flex flex-col gap-3">
           <button className="btn" onClick={() => input.current?.click()}>
-            <Camera size={16} /> {ai ? t("Photo or PDF: Claude fills it in") : t("Photo or PDF")}
+            <Camera size={16} /> {ai ? t("Photo or PDF: Hem fills it in") : t("Photo or PDF")}
           </button>
           <button className="btn-ghost" onClick={() => onDraft(empty(false))}>{t("Type it in")}</button>
           {!ai && (
             <p className="text-sm text-muted">
-              {t("Or send the document to Claude with your Hembrain link and say “file this in our papers”: Claude reads it and fills everything in.")}
+              {t("Or send the document to Hem from Claude or ChatGPT and say “file this in our papers”: Hem reads it and fills everything in.")}
             </p>
           )}
           {error && <p className="text-sm text-danger">{error}</p>}
@@ -506,8 +506,8 @@ function ReviewCard() {
   const toast = useToast();
   return (
     <section className="card flex flex-col gap-2">
-      <h2 className="flex items-center gap-2 font-semibold"><Sparkles size={16} /> {t("Ask Claude for a review")}</h2>
-      <p className="text-sm text-muted">{t("Once a year, or before a renewal: Claude reads your papers through your Hembrain link and says what to cancel, merge or renegotiate.")}</p>
+      <h2 className="flex items-center gap-2 font-semibold"><ThinkingDots size={6} still /> {t("Ask Hem for a review")}</h2>
+      <p className="text-sm text-muted">{t("Once a year, or before a renewal: Hem reads your papers and says what to cancel, merge or renegotiate.")}</p>
       <p className="rounded-xl bg-accent-soft p-3 text-sm">{reviewPrompt(t)}</p>
       <button
         className="btn-ghost self-start"

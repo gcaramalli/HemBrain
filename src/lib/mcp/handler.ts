@@ -5,7 +5,7 @@ import { buildInstructions, registerTools } from "./tools";
 
 function handlerFor(ctx: McpContext) {
   return createMcpHandler(registerTools, {
-    serverInfo: { name: "hembrain", version: "1.1.0" },
+    serverInfo: { name: "hem-hembrain", version: "1.2.0" },
     instructions: buildInstructions(ctx),
     // The tool list never changes, so no long-lived update streams: they held
     // Vercel functions open until the 300 s timeout.

@@ -1,6 +1,6 @@
 "use client";
 
-import { Sparkles } from "lucide-react";
+import { ThinkingDots } from "@/components/thinking-dots";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useFamily } from "./family-context";
 import { MemberBadge, MemberSelect } from "./member-select";
@@ -269,7 +269,7 @@ export function ListsView({ kind, header }: { kind: List["kind"]; header: (newLi
 
           {isGrocery && suggestions.length > 0 && (
             <section className="rounded-[22px] border border-dashed border-border p-4">
-              <h2 className="flex items-center gap-1.5 font-semibold"><Sparkles size={16} /> {t("Probably needed soon")}</h2>
+              <h2 className="flex items-center gap-1.5 font-semibold"><ThinkingDots size={6} still /> {t("Probably needed soon")}</h2>
               <p className="mb-2 text-xs text-muted">{t("Based on how often you buy these. Tap to add.")}</p>
               <div className="flex flex-wrap gap-2">
                 {suggestions.map((s) => {

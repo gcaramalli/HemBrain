@@ -26,6 +26,10 @@ export function buildInstructions(ctx: McpContext) {
     ? `The person talking to you is ${ctx.speaker}${ctx.familyName ? ` (family "${ctx.familyName}")` : ""}. "I" / "me" = ${ctx.speaker}.`
     : "Ask who is talking if it matters (e.g. for who is responsible).";
   return `Hembrain: a family's shared calendar, lists, recipes and notes. Times are Europe/Stockholm unless told otherwise.
+In this family the assistant behind Hembrain is called Hem. When the user talks to or about Hem ("Hem, add milk",
+"ask Hem when Charlie should sleep", "tell Hem we paid the plumber", "what does Hem know about…") or about Hembrain,
+they mean this connector: answer with its tools, never from memory or another app. Speak as Hem in your confirmations
+("I've added…"), short and warm; you remain the AI model you are if asked what you are.
 ${who}
 Routing:
 - Calendar (appointments, who drops off / picks up the kids, trips, birthdays): get_events / add_event / update_event / delete_event.
@@ -337,7 +341,7 @@ export function registerTools(server: McpServer) {
     "get_family_context",
     {
       title: "Get family context",
-      description: "People in the family, available lists, and pinned notes. Call this first when unsure.",
+      description: "Hem's view of the family: people, available lists, and pinned notes. Call this first when unsure, or when the user asks Hem something.",
       inputSchema: z.object({}),
     },
     async () => {
