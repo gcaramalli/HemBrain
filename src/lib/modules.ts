@@ -1,9 +1,18 @@
-import { Wallet, Apple, Earth, Gauge, Lightbulb, SlidersHorizontal, Baby, Backpack, Bell, Brain, BriefcaseBusiness, FileText, CalendarDays, ChartColumn, ChefHat, CookingPot, House, ListChecks, Lock, Moon, Receipt, Settings, Shirt, ShoppingCart, UserRound, Utensils, type LucideIcon } from "lucide-react";
+import { createLucideIcon, Wallet, Apple, Earth, Gauge, Lightbulb, SlidersHorizontal, Baby, Backpack, Bell, Brain, BriefcaseBusiness, FileText, CalendarDays, ChartColumn, ChefHat, CookingPot, ListChecks, Lock, Moon, Receipt, Settings, Shirt, ShoppingCart, UserRound, Utensils, type LucideIcon } from "lucide-react";
+
+// Hembrain's own mark as a line icon (the Home tab): the house that is also a
+// speech bubble, with the three dots (the family, and Claude thinking).
+const HemHome = createLucideIcon("hem-home", [
+  ["path", { d: "M12 3.5 4 9.8v10.7l3.2-2.1H19a1 1 0 0 0 1-1V9.8z", key: "house" }],
+  ["circle", { cx: "8.9", cy: "13.4", r: "1.35", fill: "currentColor", fillOpacity: 1, stroke: "none", key: "a" }],
+  ["circle", { cx: "12", cy: "13.4", r: "1.35", fill: "currentColor", fillOpacity: 1, stroke: "none", key: "b" }],
+  ["circle", { cx: "15.1", cy: "13.4", r: "1.35", fill: "currentColor", fillOpacity: 1, stroke: "none", key: "c" }],
+]);
 
 // Each part of the app has its own hue, used only to find your way (tab icons,
 // hub tiles, page titles). Data about people keeps the people's colours.
 export const MODULES = {
-  today: { color: "#5b8def", Icon: House },
+  today: { color: "#5b8def", Icon: HemHome },
   calendar: { color: "#9b7bf0", Icon: CalendarDays },
   todo: { color: "#3fbf7f", Icon: ListChecks },
   kids: { color: "#f5904a", Icon: Baby },

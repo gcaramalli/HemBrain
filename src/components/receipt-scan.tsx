@@ -1,5 +1,6 @@
 "use client";
 
+import { ThinkingDots } from "@/components/thinking-dots";
 import { Camera } from "lucide-react";
 import { useRef, useState } from "react";
 import { useFamily } from "./family-context";
@@ -104,7 +105,12 @@ export function ReceiptScan({ onLogged }: { onLogged: () => void }) {
       </Sheet>
 
       <Sheet open={state === "reading" || state === "review"} onClose={() => setState("idle")} title={t("Receipt")}>
-        {state === "reading" && <p className="py-8 text-center text-muted">{t("Reading the receipt…")}</p>}
+        {state === "reading" && (
+          <p className="flex flex-col items-center gap-3 py-8 text-center text-muted">
+            <ThinkingDots size={12} />
+            {t("Reading the receipt…")}
+          </p>
+        )}
         {state === "review" && error && !result && (
           <div className="flex flex-col gap-3">
             <p className="text-sm text-danger">{error}</p>

@@ -186,3 +186,15 @@ body {
   }
 }
 .landing-glow .landing-blob { opacity: 0.45; }
+
+/* ThinkingDots: the logo's three dots, one after the other. */
+@keyframes thinking {
+  0%, 70%, 100% { transform: translateY(0); opacity: 0.45; }
+  35% { transform: translateY(-35%); opacity: 1; }
+}
+.thinking-dot {
+  animation: thinking 1.1s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .thinking-dot { animation: none; opacity: 0.8; }
+}
