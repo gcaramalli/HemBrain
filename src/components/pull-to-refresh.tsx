@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ThinkingDots } from "./thinking-dots";
 
 const THRESHOLD = 70; // px of indicator height that triggers the refresh
-const MIN_SPIN = 700; // ms: long enough to see that something happened
+const MIN_SPIN = 1200; // ms: a full bounce of the three dots, so you see it happen
 
 // Pull down from the top of the page to refresh. An installed app on an iPhone
 // has no pull-to-refresh of its own, so the app draws one: the logo's three
@@ -72,8 +72,8 @@ export function PullToRefresh({ onRefresh }: { onRefresh: () => void }) {
       className="flex items-end justify-center overflow-hidden"
       style={{ height: pull, transition: dragging ? undefined : "height 200ms ease-out" }}
     >
-      <span className="pb-3" style={{ opacity: busy ? 1 : progress, transform: `scale(${0.6 + 0.4 * progress})` }}>
-        <ThinkingDots size={9} still={!busy} />
+      <span className="pb-4" style={{ opacity: busy ? 1 : progress, transform: `scale(${0.6 + 0.4 * progress})` }}>
+        <ThinkingDots size={11} still={!busy} />
       </span>
     </div>
   );
