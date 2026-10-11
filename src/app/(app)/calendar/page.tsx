@@ -1,6 +1,7 @@
 "use client";
 
 import { CalendarSegments, PageHeader } from "@/components/page-header";
+import { PageHem } from "@/components/page-hem";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useFamily } from "@/components/family-context";
@@ -151,6 +152,8 @@ export default function CalendarPage() {
       >
         <CalendarSegments />
       </PageHeader>
+
+      <PageHem topic="week" />
 
       {/* How to look at it: chips, lighter than the section switch above. */}
       <div className="flex gap-2">

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useFamily } from "@/components/family-context";
 import { useKid } from "@/components/kid-context";
 import { PageHeader } from "@/components/page-header";
+import { PageHem } from "@/components/page-hem";
 import { Sheet } from "@/components/sheet";
 import { useToast } from "@/components/toast";
 import { ageInMonths, dayKey, fmtDate } from "@/lib/dates";
@@ -63,6 +64,8 @@ export default function WardrobePage() {
         backLabel={`${kid.emoji} ${kid.name}`}
         action={<button className="btn" onClick={() => setEditing(blank("have"))}>+ {t("Clothes")}</button>}
       />
+
+      <PageHem topic="wardrobe" kid={kid} />
 
       <button className="card grid grid-cols-2 gap-2 text-left" onClick={() => setSizes(true)}>
         <span>

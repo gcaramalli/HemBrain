@@ -8,6 +8,7 @@ import { EventForm } from "@/components/event-form";
 import { useKid } from "@/components/kid-context";
 import { KidSettingsSheet } from "@/components/kid-settings";
 import { PageHeader } from "@/components/page-header";
+import { PageHem } from "@/components/page-hem";
 import { Sheet } from "@/components/sheet";
 import { useToast } from "@/components/toast";
 import { assignSlot, CARE_KINDS, fetchAvailability, findSlot, isCareDay, setAvailability, slotAvailability } from "@/lib/care";
@@ -133,6 +134,8 @@ export default function PreschoolPage() {
         backLabel={`${kid.emoji} ${kid.name}`}
         action={<button className="btn-ghost" onClick={() => setSettings(true)} aria-label={t("Settings for {name}", { name: kid.name })}><Settings size={18} /></button>}
       />
+
+      <PageHem topic="preschool" kid={kid} />
 
       {open > 0 && (
         <p className="rounded-xl bg-accent-soft px-4 py-3 text-sm">

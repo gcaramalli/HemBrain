@@ -5,16 +5,20 @@ import { useEffect, useRef, useState } from "react";
 import { useFamily } from "./family-context";
 import { ThinkingDots } from "./thinking-dots";
 
-export type AskTopic = "bedtime" | "nap" | "kid_food" | "dinner" | "today";
+// Mirrors ASK_TOPICS in src/app/api/ai/ask/route.ts.
+export type AskTopic =
+  | "bedtime" | "nap" | "kid_food" | "dinner" | "today"
+  | "week" | "todo" | "shopping" | "recipes" | "purchases"
+  | "kid_week" | "preschool" | "wardrobe" | "brain" | "papers" | "travels" | "expenses" | "work";
 type Answer = { headline: string; details: string[] };
 type Turn = { question: string; answer: Answer; at: string };
 
 // The brand mark as Hem's face: the three dots on night blue (ringed so it
 // still shows on the night-blue page in dark mode).
-export function HemAvatar({ thinking }: { thinking?: boolean }) {
+export function HemAvatar() {
   return (
     <span className="flex size-8 shrink-0 items-center justify-center rounded-full" style={{ background: "#111722", boxShadow: "inset 0 0 0 1px rgb(255 255 255 / 0.15)" }} aria-hidden>
-      <ThinkingDots size={5} still={!thinking} />
+      <ThinkingDots size={5} still />
     </span>
   );
 }
@@ -29,6 +33,78 @@ function HemBubble({ children, avatar = true }: { children: React.ReactNode; ava
         {children}
       </div>
     </div>
+  );
+}
+
+// Hem is writing: its dots bounce in a bubble of their own, as in Messages.
+function TypingBubble({ label }: { label: string }) {
+  return (
+    <div className="hem-in flex items-end gap-2" role="status" aria-label={label}>
+      <HemAvatar />
+      <div className="flex h-[2.6rem] items-center rounded-2xl rounded-bl-md bg-surface px-4" style={{ boxShadow: "var(--lift)" }}>
+        <ThinkingDots size={7} />
+      </div>
+    </div>
+  );
+}
+
+// Text Hem writes as you watch, letter by letter. The rest of the text holds
+// its place unseen, so the bubble keeps its size and the page doesn't jump.
+function Typed({ text, onDone }: { text: string; onDone?: () => void }) {
+  const [n, setN] = useState(0);
+  const done = useRef(onDone);
+  useEffect(() => {
+    done.current = onDone;
+  });
+  useEffect(() => {
+    if (reducedMotion()) {
+      setN(text.length);
+      done.current?.();
+      return;
+    }
+    // About 25 ms a letter, a long line never taking much more than 2 s.
+    const every = Math.max(8, Math.min(28, 2000 / Math.max(1, text.length)));
+    let i = 0;
+    const timer = setInterval(() => {
+      i += 1;
+      setN(i);
+      if (i >= text.length) {
+        clearInterval(timer);
+        done.current?.();
+      }
+    }, every);
+    return () => clearInterval(timer);
+  }, [text]);
+  return (
+    <>
+      <span aria-hidden>{text.slice(0, n)}</span>
+      <span aria-hidden className="invisible">{text.slice(n)}</span>
+      <span className="sr-only">{text}</span>
+    </>
+  );
+}
+
+// Hem's opening line. Before the first question it is the button that asks it,
+// with the send arrow at its end (shown once the line is written).
+function OpeningBubble({ text, ask }: { text: React.ReactNode; ask: { label: string; ready: boolean; go: () => void } | null }) {
+  if (!ask) return <HemBubble>{text}</HemBubble>;
+  return (
+    <button onClick={ask.go} disabled={!ask.ready} className="hem-in group flex items-end gap-2 text-left">
+      <HemAvatar />
+      <span
+        className="flex max-w-[85%] items-center gap-3 rounded-2xl rounded-bl-md bg-surface py-1.5 pl-4 pr-1.5 text-[15px] leading-snug transition-transform group-active:scale-[0.98]"
+        style={{ boxShadow: "var(--lift)" }}
+      >
+        <span className="py-1">{text}</span>
+        <span className="sr-only">{ask.label}</span>
+        <span
+          aria-hidden
+          className={`flex size-8 shrink-0 items-center justify-center rounded-full bg-foreground text-background transition-opacity duration-300 ${ask.ready ? "hem-nudge opacity-100" : "opacity-0"}`}
+        >
+          <ArrowUp size={16} strokeWidth={2.5} />
+        </span>
+      </span>
+    </button>
   );
 }
 
@@ -118,7 +194,10 @@ export function AskHem({
   const [earlier, setEarlier] = useState(0); // how many turns came from an earlier visit
   const [asking, setAsking] = useState<{ q: string; topic: AskTopic } | null>(null);
   const [slow, setSlow] = useState(false); // Hem says what it's doing after a few seconds
-  const [step, setStep] = useState(Infinity); // 0 = headline only, n = n reasons shown
+  // The answer being written: 0 = the headline, n = the n-th reason; Infinity = all written.
+  const [step, setStep] = useState(Infinity);
+  // Hem's opening line: "dots" while it's about to speak, "typing", then "done".
+  const [opening, setOpening] = useState<"dots" | "typing" | "done">("done");
   const [failed, setFailed] = useState<{ q: string; topic: AskTopic; text: string; typed: boolean } | null>(null);
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
@@ -131,8 +210,14 @@ export function AskHem({
     setTurns(saved);
     setEarlier(saved.length);
     setNow(Date.now());
+    // Coming back to a conversation: what was said is just there. Otherwise Hem
+    // types its opening line first.
+    const fresh = saved.length === 0 && !reducedMotion();
+    setOpening(fresh ? "dots" : "done");
+    const timer = fresh ? setTimeout(() => alive.current && setOpening("typing"), 700) : undefined;
     return () => {
       alive.current = false;
+      clearTimeout(timer);
     };
   }, [key]);
 
@@ -173,33 +258,26 @@ export function AskHem({
       problem = t("Sorry, I couldn't think straight just now. Try me again in a moment?");
     }
     clearTimeout(slowTimer);
-    // Hem takes a breath before answering, a little longer for a longer answer:
-    // a fast model shouldn't feel like a form. Never more than 1.5 s on top.
+    // The dots bounce a moment even when the model is fast: Hem isn't a form.
     const quick = reducedMotion();
-    if (!quick && answer) {
-      const length = answer.headline.length + answer.details.join("").length;
-      await wait(Math.min(1500, Math.max(0, 900 + length * 4 - (Date.now() - started))));
-    }
+    if (!quick) await wait(Math.max(0, 1200 - (Date.now() - started)));
     if (!alive.current) return;
     setAsking(null);
     if (!answer) return setFailed({ q, topic: which, text: problem ?? "", typed });
     const next = [...turns, { question: q, answer, at: new Date().toISOString() }];
     setTurns(next);
     save(key, next);
-    if (quick) return setStep(Infinity);
-    // What Hem would say out loud first, then the reasons, as if typed.
-    setStep(0);
-    await wait(500);
-    for (let i = 1; i <= answer.details.length; i++) {
-      if (!alive.current) return;
-      setStep(i);
-      await wait(280);
-    }
-    setStep(Infinity);
+    // What Hem would say out loud first, then the reasons, each written out.
+    setStep(quick ? Infinity : 0);
   }
 
+  // One part of the answer is written: a short pause, then the next one.
+  const written = (part: number, parts: number) => {
+    setTimeout(() => alive.current && setStep(part + 1 >= parts ? Infinity : part + 1), 250);
+  };
+
   const last = turns.length - 1;
-  const busy = asking !== null || (step !== Infinity && turns.length > 0);
+  const busy = asking !== null || opening !== "done" || (step !== Infinity && turns.length > 0);
   const ago = (iso: string) => {
     const minutes = Math.round((now - new Date(iso).getTime()) / 60000);
     const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
@@ -225,25 +303,35 @@ export function AskHem({
 
   return (
     <section className="flex flex-col gap-3">
-      <HemBubble>{intro}</HemBubble>
+      {opening === "dots" ? (
+        <TypingBubble label={t("Hem is thinking")} />
+      ) : (
+        <OpeningBubble
+          text={opening === "typing" ? <Typed text={intro} onDone={() => setOpening("done")} /> : intro}
+          // The first question is always the same: tapping Hem's line asks it.
+          ask={turns.length === 0 && !asking && !failed ? { label: question, ready: opening === "done", go: () => ask(question, topic) } : null}
+        />
+      )}
 
       {turns.map((turn, i) => {
-        const shown = i === last ? step : Infinity;
+        const shown = i === last ? step : Infinity; // the part being written
+        const parts = 1 + turn.answer.details.length;
         const reasons = turn.answer.details.slice(0, shown);
+        const write = (part: number, text: string) => (part === shown ? <Typed text={text} onDone={() => written(part, parts)} /> : text);
         return (
           <div key={turn.at} className="flex flex-col gap-3">
             {i === 0 && earlier > 0 && <p className="text-center text-xs text-muted">{ago(turn.at)}</p>}
             {i === earlier && earlier > 0 && <p className="text-center text-xs text-muted">{t("Now")}</p>}
             <MyBubble text={turn.question} />
             <div className="flex flex-col gap-1">
-              <HemBubble avatar={reasons.length === 0}>{turn.answer.headline}</HemBubble>
+              <HemBubble avatar={reasons.length === 0}>{write(0, turn.answer.headline)}</HemBubble>
               {reasons.length > 0 && (
                 <HemBubble>
                   <ul className="flex flex-col gap-1">
-                    {reasons.map((d) => (
+                    {reasons.map((d, j) => (
                       <li key={d} className="hem-in flex gap-2">
                         <span aria-hidden className="mt-[0.55em] size-1 shrink-0 rounded-full bg-muted" />
-                        <span>{d}</span>
+                        <span>{write(j + 1, d)}</span>
                       </li>
                     ))}
                   </ul>
@@ -257,10 +345,10 @@ export function AskHem({
       {asking && (
         <>
           <MyBubble text={asking.q} />
-          {/* Hem's face is the dots: they bounce while Hem thinks, no second set in a bubble. */}
-          <div className="hem-in flex items-center gap-2" role="status" aria-label={t("Hem is thinking")}>
-            <HemAvatar thinking />
-            {slow && <span className="hem-in text-sm text-muted">{t("Let me look…")}</span>}
+          {/* Hem is writing: the dots bounce in its bubble, the avatar stays still. */}
+          <div className="flex items-end gap-2">
+            <TypingBubble label={t("Hem is thinking")} />
+            {slow && <span className="hem-in pb-2.5 text-sm text-muted">{t("Let me look…")}</span>}
           </div>
         </>
       )}
@@ -268,7 +356,7 @@ export function AskHem({
       {failed && (
         <>
           <MyBubble text={failed.q} />
-          <HemBubble>{failed.text}</HemBubble>
+          <HemBubble><Typed text={failed.text} /></HemBubble>
         </>
       )}
 
@@ -276,9 +364,7 @@ export function AskHem({
         <div className="flex flex-wrap gap-2 pl-10">
           {failed ? (
             <Reply secondary onClick={() => ask(failed.q, failed.topic, failed.typed)}>{t("Try again")}</Reply>
-          ) : turns.length === 0 ? (
-            <Reply onClick={() => ask(question, topic)}>{question}</Reply>
-          ) : more ? (
+          ) : turns.length === 0 ? null : more ? (
             <Reply onClick={() => ask(more.label, more.topic ?? topic)}>{more.label}</Reply>
           ) : (
             <Reply secondary onClick={() => ask(t("Can you check again?"), topic)}>{t("Can you check again?")}</Reply>
@@ -287,7 +373,8 @@ export function AskHem({
       )}
 
       {/* Or say it in your own words. The keyboard's mic dictates for free. */}
-      {!busy && (
+      {/* Only once Hem has answered: the first question needs no typing. */}
+      {!busy && turns.length > 0 && (
         <form
           className="hem-in hem-offer ml-10 flex items-center gap-1 rounded-full bg-surface py-1 pl-4 pr-1"
           style={{ boxShadow: "var(--lift)" }}

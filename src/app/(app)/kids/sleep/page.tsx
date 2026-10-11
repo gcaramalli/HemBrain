@@ -122,6 +122,16 @@ export default function SleepPage() {
         backLabel={`${kid.emoji} ${kid.name}`}
       />
 
+      <AskHem
+        topic="bedtime"
+        kidId={kid.id}
+        intro={t("I've been looking at {name}'s nights. Want my take for tonight?", { name: kid.name })}
+        question={t("When should I put {name} to bed?", { name: kid.name })}
+        more={{ label: t("And tomorrow's nap?"), topic: "nap" }}
+        fold
+        hint={t("Ask Hem “when should {name} go to bed tonight?”: it reads the last days here.", { name: kid.name })}
+      />
+
       <section className="card flex flex-col gap-3">
         {state?.asleep && current ? (
           <>
@@ -168,15 +178,6 @@ export default function SleepPage() {
           </div>
         </section>
       )}
-
-      <AskHem
-        topic="bedtime"
-        kidId={kid.id}
-        intro={t("I've been looking at {name}'s nights. Want my take for tonight?", { name: kid.name })}
-        question={t("When should I put {name} to bed?", { name: kid.name })}
-        more={{ label: t("And tomorrow's nap?"), topic: "nap" }}
-        hint={t("Ask Hem “when should {name} go to bed tonight?”: it reads the last days here.", { name: kid.name })}
-      />
 
       {/* Newest first, days and the entries within each day alike. */}
       {days.map((d) => (

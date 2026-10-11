@@ -6,6 +6,7 @@ import { useFamily } from "@/components/family-context";
 import { Sheet } from "@/components/sheet";
 import { useToast } from "@/components/toast";
 import { KitchenHeader } from "@/components/page-header";
+import { PageHem } from "@/components/page-hem";
 import { guessCategory } from "@/lib/categories";
 import { slotNow } from "@/lib/meals";
 import { dayKey } from "@/lib/dates";
@@ -62,6 +63,7 @@ function RecipesPanel() {
   return (
     <div className="flex flex-col gap-4">
       <KitchenHeader action={<button className="btn" onClick={() => setEditing({ ...emptyRecipe })}>+ {t("Recipe")}</button>} />
+      <PageHem topic="recipes" />
 
       <div className="flex gap-2">
         <input className="input" placeholder={t("Search by name, ingredient, tag…")} value={q} onChange={(e) => setQ(e.target.value)} />

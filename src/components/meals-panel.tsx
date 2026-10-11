@@ -69,6 +69,15 @@ export function MealsPanel() {
     <div className="flex flex-col gap-4">
       <KitchenHeader action={<button className="btn" onClick={() => setEditing(blank())}>+ {t("Meal")}</button>} />
 
+      <AskHem
+        topic="dinner"
+        intro={t("I've seen what you ate lately, and I know your recipes.")}
+        question={t("What should we eat tonight?")}
+        more={{ label: t("Another idea?") }}
+        fold
+        hint={t("Ask Hem “what should we eat tonight?”: it looks at your recent meals, your recipes and what you just bought.")}
+      />
+
       {kids.length > 0 && all.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {([
@@ -103,14 +112,6 @@ export function MealsPanel() {
           )}
         </section>
       )}
-
-      <AskHem
-        topic="dinner"
-        intro={t("I've seen what you ate this week and what you just bought.")}
-        question={t("What should we eat tonight?")}
-        more={{ label: t("Another idea?") }}
-        hint={t("Ask Hem “what should we eat tonight?”: it looks at your recent meals, your recipes and what you just bought.")}
-      />
 
       {byDay.map(([day, list]) => (
         <section key={day}>

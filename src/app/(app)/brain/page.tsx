@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useFamily } from "@/components/family-context";
 import { OccasionsPanel } from "@/components/occasions-panel";
 import { PageHeader } from "@/components/page-header";
+import { PageHem } from "@/components/page-hem";
 import { Sheet } from "@/components/sheet";
 import { useToast } from "@/components/toast";
 import type { Note } from "@/lib/types";
@@ -73,6 +74,7 @@ export default function BrainPage() {
         title={t("Family brain")}
         action={tab === "notes" && <button className="btn" onClick={() => setEditing({ title: "", body: "", pinned: false, tags: "" })}>+ {t("Note")}</button>}
       />
+      <PageHem topic="brain" />
       <div className="grid grid-cols-2 rounded-full bg-accent-soft p-1 text-sm">
         {(["notes", "dates"] as const).map((x) => (
           <button key={x} onClick={() => setTab(x)} className={`min-h-9 rounded-full ${tab === x ? "bg-[var(--pill)] font-semibold shadow-sm" : "text-muted"}`}>
