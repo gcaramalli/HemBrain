@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useFamily } from "./family-context";
 import { KitchenHeader } from "./page-header";
 import { Sheet } from "./sheet";
-import { ThinkingDots } from "./thinking-dots";
+import { AskHem } from "./ask-hem";
 import { useToast } from "./toast";
 import { addDays, dayKey, fmtDate, startOfDay } from "@/lib/dates";
 import { FOOD_GROUPS, groupCounts, MEAL_PLACES, MEAL_SLOTS, REACTIONS, slotNow, type MealPlace, type MealSlot } from "@/lib/meals";
@@ -104,10 +104,11 @@ export function MealsPanel() {
         </section>
       )}
 
-      <p className="flex items-start gap-2 rounded-xl bg-accent-soft px-4 py-3 text-sm">
-        <span className="mt-1.5 shrink-0"><ThinkingDots size={6} still /></span>
-        <span>{t("Ask Hem “what should we eat tonight?”: it looks at your recent meals, your recipes and what you just bought.")}</span>
-      </p>
+      <AskHem
+        topic="dinner"
+        question={t("Ask Hem what we should eat tonight")}
+        hint={t("Ask Hem “what should we eat tonight?”: it looks at your recent meals, your recipes and what you just bought.")}
+      />
 
       {byDay.map(([day, list]) => (
         <section key={day}>

@@ -982,4 +982,10 @@ export const fr: Record<string, string> = {
   "Still asleep": "Dort encore",
   "Meet Hem, in Claude or ChatGPT": "Voici Hem, dans Claude ou ChatGPT",
   "Ask Hem “what should we eat tonight?”: it looks at your recent meals, your recipes and what you just bought.": "Demande à Hem « qu'est-ce qu'on mange ce soir ? » : il regarde vos derniers repas, vos recettes et ce que vous venez d'acheter.",
+  "Ask Hem when {name} should go to bed tonight": "Demander à Hem à quelle heure coucher {name} ce soir",
+  "Ask Hem what {name} should eat tonight": "Demander à Hem ce que {name} peut manger ce soir",
+  "Ask Hem what we should eat tonight": "Demander à Hem ce qu'on mange ce soir",
+  "Ask again": "Redemander",
+  "Hem is thinking": "Hem réfléchit",
+  "Hem couldn't answer right now. Try again in a moment.": "Hem n'a pas pu répondre. Réessaie dans un instant.",
 };

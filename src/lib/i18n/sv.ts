@@ -982,4 +982,10 @@ export const sv: Record<string, string> = {
   "Still asleep": "Sover fortfarande",
   "Meet Hem, in Claude or ChatGPT": "Möt Hem, i Claude eller ChatGPT",
   "Ask Hem “what should we eat tonight?”: it looks at your recent meals, your recipes and what you just bought.": "Fråga Hem ”vad ska vi äta i kväll?”: den tittar på era senaste måltider, era recept och det ni just har köpt.",
+  "Ask Hem when {name} should go to bed tonight": "Fråga Hem när {name} ska lägga sig i kväll",
+  "Ask Hem what {name} should eat tonight": "Fråga Hem vad {name} ska äta i kväll",
+  "Ask Hem what we should eat tonight": "Fråga Hem vad vi ska äta i kväll",
+  "Ask again": "Fråga igen",
+  "Hem is thinking": "Hem tänker",
+  "Hem couldn't answer right now. Try again in a moment.": "Hem kunde inte svara just nu. Försök igen om en stund.",
 };
