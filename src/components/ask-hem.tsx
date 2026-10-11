@@ -119,8 +119,9 @@ export function AskHem({
   const [asking, setAsking] = useState<{ q: string; topic: AskTopic } | null>(null);
   const [slow, setSlow] = useState(false); // Hem says what it's doing after a few seconds
   const [step, setStep] = useState(Infinity); // 0 = headline only, n = n reasons shown
-  const [failed, setFailed] = useState<{ q: string; topic: AskTopic; text: string } | null>(null);
+  const [failed, setFailed] = useState<{ q: string; topic: AskTopic; text: string; typed: boolean } | null>(null);
   const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState("");
   const [now, setNow] = useState(0); // when the saved answers were loaded, for "2 hours ago"
   const alive = useRef(true);
 
@@ -144,7 +145,7 @@ export function AskHem({
     );
   }
 
-  async function ask(q: string, which: AskTopic) {
+  async function ask(q: string, which: AskTopic, typed = false) {
     setAsking({ q, topic: which });
     setFailed(null);
     setSlow(false);
@@ -156,9 +157,16 @@ export function AskHem({
       const res = await fetch("/api/ai/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: which, kidId, previous: turns.map((x) => x.answer.headline) }),
+        body: JSON.stringify({
+          topic: which,
+          kidId,
+          previous: turns.map((x) => x.answer.headline),
+          message: typed ? q : undefined,
+          history: turns.slice(-2).map((x) => ({ q: x.question, a: [x.answer.headline, ...x.answer.details].join(" ") })),
+        }),
       });
-      if (res.status === 402) problem = t("I've used up this month's budget. I'll be back on the 1st.");
+      if (res.status === 429) problem = t("That's a lot of questions for today. Shall we pick this up tomorrow?");
+      else if (res.status === 402) problem = t("I've used up this month's budget. I'll be back on the 1st.");
       else if (!res.ok) problem = t("Sorry, I couldn't think straight just now. Try me again in a moment?");
       else answer = (await res.json()) as Answer;
     } catch {
@@ -174,7 +182,7 @@ export function AskHem({
     }
     if (!alive.current) return;
     setAsking(null);
-    if (!answer) return setFailed({ q, topic: which, text: problem ?? "" });
+    if (!answer) return setFailed({ q, topic: which, text: problem ?? "", typed });
     const next = [...turns, { question: q, answer, at: new Date().toISOString() }];
     setTurns(next);
     save(key, next);
@@ -267,7 +275,7 @@ export function AskHem({
       {!busy && (
         <div className="flex flex-wrap gap-2 pl-10">
           {failed ? (
-            <Reply secondary onClick={() => ask(failed.q, failed.topic)}>{t("Try again")}</Reply>
+            <Reply secondary onClick={() => ask(failed.q, failed.topic, failed.typed)}>{t("Try again")}</Reply>
           ) : turns.length === 0 ? (
             <Reply onClick={() => ask(question, topic)}>{question}</Reply>
           ) : more ? (
@@ -276,6 +284,40 @@ export function AskHem({
             <Reply secondary onClick={() => ask(t("Can you check again?"), topic)}>{t("Can you check again?")}</Reply>
           )}
         </div>
+      )}
+
+      {/* Or say it in your own words. The keyboard's mic dictates for free. */}
+      {!busy && (
+        <form
+          className="hem-in hem-offer ml-10 flex items-center gap-1 rounded-full bg-surface py-1 pl-4 pr-1"
+          style={{ boxShadow: "var(--lift)" }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            const text = draft.trim();
+            if (!text) return;
+            setDraft("");
+            ask(text, topic, true);
+          }}
+        >
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            maxLength={300}
+            enterKeyHint="send"
+            autoComplete="off"
+            placeholder={t("Or tell me…")}
+            aria-label={t("Tell Hem")}
+            className="min-w-0 flex-1 bg-transparent py-2 text-base outline-none placeholder:text-muted"
+          />
+          <button
+            type="submit"
+            disabled={!draft.trim()}
+            aria-label={t("Send")}
+            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-foreground text-background transition-[opacity,transform] active:scale-95 disabled:opacity-25"
+          >
+            <ArrowUp size={16} strokeWidth={2.5} />
+          </button>
+        </form>
       )}
     </section>
   );
