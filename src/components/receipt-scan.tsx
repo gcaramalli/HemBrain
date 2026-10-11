@@ -100,7 +100,7 @@ export function ReceiptScan({ onLogged }: { onLogged: () => void }) {
       <Sheet open={state === "help"} onClose={() => setState("idle")} title={t("Scan a receipt")}>
         <div className="flex flex-col gap-3 text-sm">
           <p>{t("Send the photo of the receipt to Hem from Claude or ChatGPT (connected in Settings → Reminders & AI) and say “log this receipt”. Hem logs every line and checks off what was on the list.")}</p>
-          <p className="text-muted">{t("To scan right here instead, the admin adds an Anthropic API key (ANTHROPIC_API_KEY) to the app's server settings. It costs about a cent per receipt.")}</p>
+          <p className="text-muted">{t("To scan right here instead, the admin adds an Anthropic or Gemini API key (ANTHROPIC_API_KEY or GEMINI_API_KEY) to the app's server settings. It costs about a cent per receipt.")}</p>
         </div>
       </Sheet>
 

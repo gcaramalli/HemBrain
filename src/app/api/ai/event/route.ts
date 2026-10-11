@@ -43,7 +43,7 @@ export async function POST(req: Request) {
       `You turn one sentence into a family calendar event. The family: ${family}. The person typing is ${me}; "I"/"me"/"je"/"jag" means ${me}.
 Times are the family's local time (Europe/Stockholm). Resolve relative dates ("Thursday", "tomorrow", "demain", "på torsdag") to the next matching date from now. If no time is given for a drop-off or pick-up, use the child's usual time. Give timed events an end (30 minutes for drop-off/pick-up, 1 hour otherwise) unless one is stated. Use first names exactly as listed. Write the title in the language the sentence is written in.
 Family notes: ${(notes ?? []).map((n) => `${n.title}: ${n.body}`).join(" | ").slice(0, 2000) || "none"}`,
-      [{ type: "text", text: `Now: ${now ?? new Date().toISOString()}\n\n${text.trim()}` }],
+      [{ text: `Now: ${now ?? new Date().toISOString()}\n\n${text.trim()}` }],
     );
     return Response.json(draft);
   } catch (e) {

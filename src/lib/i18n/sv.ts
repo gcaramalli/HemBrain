@@ -291,7 +291,7 @@ export const sv: Record<string, string> = {
   "This event repeats.": "Händelsen upprepas.",
   "This week": "Denna vecka",
   "Title": "Rubrik",
-  "To scan right here instead, the admin adds an Anthropic API key (ANTHROPIC_API_KEY) to the app's server settings. It costs about a cent per receipt.": "För att skanna direkt här lägger admin till en Anthropic API-nyckel (ANTHROPIC_API_KEY) i appens serverinställningar. Det kostar ungefär tio öre per kvitto.",
+  "To scan right here instead, the admin adds an Anthropic or Gemini API key (ANTHROPIC_API_KEY or GEMINI_API_KEY) to the app's server settings. It costs about a cent per receipt.": "För att skanna direkt här lägger admin till en Anthropic- eller Gemini-API-nyckel (ANTHROPIC_API_KEY eller GEMINI_API_KEY) i appens serverinställningar. Det kostar ungefär tio öre per kvitto.",
   "To-do": "Att göra",
   "Today": "Idag",
   "Tomorrow": "Imorgon",
