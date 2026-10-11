@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useFamily } from "@/components/family-context";
 import { TravelsHeader } from "@/components/page-header";
+import { PageHem } from "@/components/page-hem";
 import { Sheet } from "@/components/sheet";
 import { useToast } from "@/components/toast";
 import { WorldMap } from "@/components/world-map";
@@ -53,6 +54,7 @@ export default function TravelsPage() {
   return (
     <div className="flex flex-col gap-4">
       <TravelsHeader back="/" backLabel={t("Home")} action={<button className="btn" onClick={() => setAdding(true)}>+ {t("Countries")}</button>} />
+      <PageHem topic="travels" />
 
       <div className="flex gap-2 overflow-x-auto pb-1">
         <button className={`chip-toggle ${focus === null ? "chip-on" : ""}`} onClick={() => setFocus(null)}>

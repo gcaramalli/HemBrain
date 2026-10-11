@@ -115,12 +115,11 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div>
+      {/* Hem says hello and opens Home on its read of the day; the big greeting only without it. */}
+      <div className={ai ? "-mb-2" : undefined}>
         <p className="text-sm capitalize text-muted">{fmtDate(new Date(), { weekday: "long", day: "numeric", month: "long" })}</p>
-        <h1 className="h1">{greeting}, {profile.display_name || t("there")}</h1>
+        <h1 className={ai ? "sr-only" : "h1"}>{greeting}, {profile.display_name || t("there")}</h1>
       </div>
-
-      <SendGift />
 
       {ai && (
         <AskHem
@@ -138,6 +137,8 @@ export default function HomePage() {
           hint=""
         />
       )}
+
+      <SendGift />
 
       {kids.map((kid) => (
         <KidCard key={kid.id} kid={kid} events={events} answers={answers} onChanged={loadEvents} />

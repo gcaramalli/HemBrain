@@ -7,6 +7,7 @@ import { HubTile } from "@/components/hub-tile";
 import { useKid, useKidAge } from "@/components/kid-context";
 import { KidSettingsSheet } from "@/components/kid-settings";
 import { PageHeader } from "@/components/page-header";
+import { PageHem } from "@/components/page-hem";
 import { BoardView } from "@/components/private-space";
 import { Sheet } from "@/components/sheet";
 import { useToast } from "@/components/toast";
@@ -122,6 +123,8 @@ export default function KidPage() {
         }
         action={<button className="btn-ghost" onClick={() => setSettings(true)} aria-label={t("Settings for {name}", { name: kid.name })}><Settings size={18} /></button>}
       />
+
+      <PageHem topic="kid_week" kid={kid} />
 
       {kids.length > 1 && (
         <div className="-mx-4 flex gap-2 overflow-x-auto px-4">

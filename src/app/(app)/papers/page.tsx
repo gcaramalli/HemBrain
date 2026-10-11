@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ConfirmButton } from "@/components/confirm-button";
 import { useFamily } from "@/components/family-context";
 import { PageHeader } from "@/components/page-header";
+import { PageHem } from "@/components/page-hem";
 import { PinGate, usePin } from "@/components/pin-lock";
 import { shrink } from "@/components/receipt-scan";
 import { Sheet } from "@/components/sheet";
@@ -180,6 +181,7 @@ export default function PapersPage() {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader module="papers" back="/" backLabel={t("Home")} title={t("Papers")} action={<button className="btn" onClick={() => setAdding(true)}>+ {t("Add")}</button>} />
+      <PageHem topic="papers" />
       <div className="grid grid-cols-2 rounded-full bg-accent-soft p-1 text-sm">
         {(["family", "mine"] as const).map((x) => (
           <button key={x} onClick={() => setScope(x)} className={`flex min-h-9 items-center justify-center gap-1.5 rounded-full ${scope === x ? "bg-[var(--pill)] font-semibold shadow-sm" : "text-muted"}`}>

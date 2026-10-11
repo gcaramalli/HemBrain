@@ -3,6 +3,7 @@
 import { useFamily } from "@/components/family-context";
 import { ListsView } from "@/components/lists-view";
 import { KitchenHeader } from "@/components/page-header";
+import { PageHem } from "@/components/page-hem";
 
 // Kitchen → Shopping.
 export default function ShoppingPage() {
@@ -10,7 +11,12 @@ export default function ShoppingPage() {
   return (
     <ListsView
       kind="grocery"
-      header={(newList) => <KitchenHeader action={<button className="btn" onClick={newList}>+ {t("List")}</button>} />}
+      header={(newList) => (
+        <>
+          <KitchenHeader action={<button className="btn" onClick={newList}>+ {t("List")}</button>} />
+          <PageHem topic="shopping" />
+        </>
+      )}
     />
   );
 }

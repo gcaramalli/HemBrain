@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ConfirmButton } from "@/components/confirm-button";
 import { useFamily } from "@/components/family-context";
 import { PageHeader } from "@/components/page-header";
+import { PageHem } from "@/components/page-hem";
 import { PinGate } from "@/components/pin-lock";
 import { Sheet } from "@/components/sheet";
 import { useToast } from "@/components/toast";
@@ -119,6 +120,8 @@ function WorkSpace() {
         </div>
         )}
       </PageHeader>
+
+      <PageHem topic="work" />
 
       {data && (
         <>

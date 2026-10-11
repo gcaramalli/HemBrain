@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useFamily } from "@/components/family-context";
 import { MemberBadge } from "@/components/member-select";
 import { PageHeader } from "@/components/page-header";
+import { PageHem } from "@/components/page-hem";
 import { Sheet } from "@/components/sheet";
 import { useToast } from "@/components/toast";
 import { dayKey, fmtDate } from "@/lib/dates";
@@ -141,6 +142,8 @@ export default function ExpensesPage() {
         title={t("Expenses")}
         action={<button className="btn" onClick={() => setEditing(fresh())}>+ {t("Expense")}</button>}
       />
+
+      <PageHem topic="expenses" />
 
       {rows && (
         <section className="card flex flex-col gap-3">

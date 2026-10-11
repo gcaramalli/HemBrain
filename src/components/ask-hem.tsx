@@ -5,7 +5,11 @@ import { useEffect, useRef, useState } from "react";
 import { useFamily } from "./family-context";
 import { ThinkingDots } from "./thinking-dots";
 
-export type AskTopic = "bedtime" | "nap" | "kid_food" | "dinner" | "today";
+// Mirrors ASK_TOPICS in src/app/api/ai/ask/route.ts.
+export type AskTopic =
+  | "bedtime" | "nap" | "kid_food" | "dinner" | "today"
+  | "week" | "todo" | "shopping" | "recipes" | "purchases"
+  | "kid_week" | "preschool" | "wardrobe" | "brain" | "papers" | "travels" | "expenses" | "work";
 type Answer = { headline: string; details: string[] };
 type Turn = { question: string; answer: Answer; at: string };
 
@@ -101,6 +105,7 @@ export function AskHem({
   hint,
   per = "day",
   fold,
+  compact,
 }: {
   topic: AskTopic;
   kidId?: string;
@@ -111,6 +116,9 @@ export function AskHem({
   per?: "day" | "part";
   // Answers from an earlier visit come back folded to their first line (Home).
   fold?: boolean;
+  // At the top of a page: until something is asked, only Hem's line and the
+  // reply, no text field, so the page's own content stays close.
+  compact?: boolean;
 }) {
   const { ai, t, profile, locale } = useFamily();
   const key = `hem:${profile.id}:${topic}:${kidId ?? ""}:${period(per)}`;
@@ -287,7 +295,7 @@ export function AskHem({
       )}
 
       {/* Or say it in your own words. The keyboard's mic dictates for free. */}
-      {!busy && (
+      {!busy && !(compact && turns.length === 0 && !failed) && (
         <form
           className="hem-in hem-offer ml-10 flex items-center gap-1 rounded-full bg-surface py-1 pl-4 pr-1"
           style={{ boxShadow: "var(--lift)" }}

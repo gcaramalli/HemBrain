@@ -81,6 +81,17 @@ export default function KidFoodPage() {
         }
       />
 
+      <AskHem
+        topic="kid_food"
+        kidId={kid.id}
+        intro={t("I know what {name} loves, and what comes back untouched.", { name: kid.name })}
+        question={t("What could {name} eat tonight?", { name: kid.name })}
+        more={{ label: t("Another idea?") }}
+        fold
+        compact
+        hint={t("Ask Hem “what should {name} eat tonight?”: it sees what {name} ate and liked here.", { name: kid.name })}
+      />
+
       {week.length > 0 && (
         <section className="card flex flex-col gap-2">
           <h2 className="font-semibold">{t("Last 7 days")} <span className="font-normal text-muted">· {week.length === 1 ? t("1 meal") : t("{n} meals", { n: week.length })}</span></h2>
@@ -98,15 +109,6 @@ export default function KidFoodPage() {
           {refused.length > 0 && <Tastes label={`🙅 ${t("Refuses")}`} items={refused} />}
         </section>
       )}
-
-      <AskHem
-        topic="kid_food"
-        kidId={kid.id}
-        intro={t("I know what {name} loves, and what comes back untouched.", { name: kid.name })}
-        question={t("What could {name} eat tonight?", { name: kid.name })}
-        more={{ label: t("Another idea?") }}
-        hint={t("Ask Hem “what should {name} eat tonight?”: it sees what {name} ate and liked here.", { name: kid.name })}
-      />
 
       {byDay.length === 0 && <p className="card text-center text-muted">{t("Nothing logged yet. Family meals count too; mark here how {name} took them.", { name: kid.name })}</p>}
 

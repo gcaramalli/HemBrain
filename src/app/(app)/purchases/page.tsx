@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { KitchenHeader } from "@/components/page-header";
+import { PageHem } from "@/components/page-hem";
 import { Purchases } from "@/components/purchases";
 import { ReceiptScan } from "@/components/receipt-scan";
 
@@ -12,6 +13,7 @@ export default function PurchasesPage() {
   return (
     <div className="flex flex-col gap-4">
       <KitchenHeader action={<ReceiptScan onLogged={() => setRefresh((n) => n + 1)} />} />
+      <PageHem topic="purchases" />
       <Purchases refreshKey={refresh} />
     </div>
   );

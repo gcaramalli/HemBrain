@@ -69,8 +69,10 @@ Rules of thumb:
   `update_wardrobe`, `get_meals` with `who`, `log_meal` with `reaction`. Bedtime / meal advice: the family's Claude through the connector, or
   in the app a little conversation with Hem (`AskHem` in `src/components/ask-hem.tsx`: Hem's line with its avatar, the question as
   a chip in the user's words, bouncing dots for at least ~1.5 s, the answer revealed line by line, a follow-up chip, the day's
-  answers kept in localStorage). `/api/ai/ask` (topics bedtime, nap, kid_food, dinner, today = "What's up today?" on Home under
-  the gifts, tomorrow after 17:00) runs the same connector tools in-process with `callTool` (`src/lib/mcp/call-tool.ts`); `today` and `dinner` get
+  answers kept in localStorage). `/api/ai/ask` (topics bedtime, nap, kid_food, dinner, today = "What's up today?" at the top of Home, which
+  has no greeting when AI is on, tomorrow after 17:00; and one per page, at the top under its header: `PageHem`
+  (`src/components/page-hem.tsx`) holds each page's opening line and question, `compact` = no text field until
+  something is asked, folded to the last answer on a later visit) runs the same connector tools in-process with `callTool` (`src/lib/mcp/call-tool.ts`); `today`, `dinner`, `week`, `preschool` and `todo` get
   facts worked out in `src/lib/hem-brief.ts` (unconfirmed drop-offs / pick-ups, to-dos, anniversaries as dates to remember,
   paper deadlines; dinner = recent meals + recipes, not purchases), then the metered in-app model, prompted to speak as Hem
   in the first person (a spoken headline + 2–3 short reasons). Below the suggested reply, "Or tell me…" takes a typed message
