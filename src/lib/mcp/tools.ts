@@ -1109,7 +1109,8 @@ export function registerTools(server: McpServer) {
     "send_gift",
     {
       title: "Send a little gift",
-      description: "Send a family member a small gift (emoji + optional note) that they unwrap next time they open the app.",
+      description:
+        "Send a family member a small gift (emoji + optional note) that they unwrap next time they open the app. One at a time: while the last one to that person is still wrapped, a new one is refused.",
       inputSchema: z.object({
         to: z.string().describe("First name of the family member with an account, e.g. 'Jennie'"),
         emoji: z.string().max(16).optional().describe("Default ❤️"),
@@ -1126,6 +1127,17 @@ export function registerTools(server: McpServer) {
         (people ?? []).find((p) => p.display_name.toLowerCase() === n) ?? (people ?? []).find((p) => p.display_name.toLowerCase().startsWith(n));
       if (!target) throw new Error(`No account named "${to}". People with an account: ${(people ?? []).map((p) => p.display_name).join(", ")}`);
       if (target.id === from) throw new Error("You can't send a gift to yourself.");
+      const { data: wrapped } = await db
+        .from("gifts")
+        .select("emoji, created_at")
+        .eq("from_profile", from)
+        .eq("to_profile", target.id)
+        .is("opened_at", null)
+        .maybeSingle();
+      if (wrapped)
+        return text(
+          `${target.display_name} hasn't unwrapped your last gift yet (${wrapped.emoji}, sent ${wrapped.created_at.slice(0, 10)}). One at a time: it's waiting, you can send another once it's opened.`,
+        );
       const { error } = await db
         .from("gifts")
         .insert({ family_id: familyId(), from_profile: from, to_profile: target.id, emoji: emoji || "❤️", message: message?.trim() || null });
