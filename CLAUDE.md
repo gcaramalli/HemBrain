@@ -66,7 +66,9 @@ Rules of thumb:
   counted), summed per day in `src/lib/sleep.ts` (a night belongs to the evening it started); `kid_clothes` = has / need /
   outgrown by category, season essentials in `src/lib/wardrobe.ts`; Food = the kid's rows in `meals` (their own + family
   ones) with `meals.reaction` (loved/ok/refused). Connector: `get_kid_sleep` / `log_sleep`, `get_wardrobe` /
-  `update_wardrobe`, `get_meals` with `who`, `log_meal` with `reaction`; Claude gives the bedtime / meal advice, not the app.
+  `update_wardrobe`, `get_meals` with `who`, `log_meal` with `reaction`. Bedtime / meal advice: the family's Claude through the connector, or
+  in the app the "Ask Hem" buttons (`AskHem`, `/api/ai/ask`: runs the same connector tools in-process with `callTool`
+  from `src/lib/mcp/call-tool.ts`, then the metered in-app model; without an AI key they fall back to a hint).
 - `care_availability` — per kid/day/`kind`/parent: `available` true ("I can") or false ("I can't"), no row = hasn't said. The one who goes confirms ("I'm going") = the care event's `responsible_member_id` (`src/components/care-slot.tsx`)
 - `push_subscriptions` — one row per device with reminders on (own rows only)
 - `lists` (`kind` grocery → Kitchen, todo → Calendar → To-do, and open to-dos with a `due_date` also show on their day in the calendar and on Today, late ones on today (`src/components/todo-row.tsx`); both rendered by `src/components/lists-view.tsx`) and `list_items` (`category` = aisle id from `src/lib/categories.ts`)
@@ -175,6 +177,6 @@ Rules of thumb:
   remounts `<main>` (a new key in `AppShell`) so every screen reloads its data.
 - Optional server env: `ANTHROPIC_API_KEY` or `GEMINI_API_KEY` (+ optional `GEMINI_MODEL`; Anthropic wins if both) for
   receipt scan, "type it" event entry and paper reading (`src/lib/ai.ts`, `extract()` takes neutral `AiPart`s, on the
-  cheapest model, Haiku or Gemini Flash-Lite; add new models to `PRICES` or they are metered at a high price); advice like sleep or meals goes through the family's own Claude + the connector, not the API),
+  cheapest model, Haiku or Gemini Flash-Lite; add new models to `PRICES` or they are metered at a high price), and the "Ask Hem" buttons (bedtime, kid's food, tonight's dinner),
   `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` (reminders, `src/lib/push.ts`) and `CRON_SECRET`
   (`/api/cron/reminders`, daily at 17:00 UTC via `vercel.json`). Features hide themselves when unset.
