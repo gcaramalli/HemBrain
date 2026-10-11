@@ -68,6 +68,7 @@ export function AskHem({
   more,
   hint,
   per = "day",
+  fold,
 }: {
   topic: AskTopic;
   kidId?: string;
@@ -76,6 +77,8 @@ export function AskHem({
   more?: { label: string; topic?: AskTopic };
   hint: string;
   per?: "day" | "part";
+  // Answers from an earlier visit come back folded to their first line (Home).
+  fold?: boolean;
 }) {
   const { ai, t, profile } = useFamily();
   const key = `hem:${profile.id}:${topic}:${kidId ?? ""}:${period(per)}`;
@@ -84,6 +87,7 @@ export function AskHem({
   const [asking, setAsking] = useState<string | null>(null);
   const [shown, setShown] = useState(Infinity); // lines of the last answer revealed so far
   const [error, setError] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
   const alive = useRef(true);
 
   useEffect(() => {
@@ -144,6 +148,19 @@ export function AskHem({
   const last = turns.length - 1;
   const busy = asking !== null || (shown !== Infinity && turns.length > 0);
   const time = (iso: string) => new Date(iso).toLocaleTimeString(profile.locale, { hour: "2-digit", minute: "2-digit" });
+
+  if (fold && !open && earlier > 0 && turns.length === earlier && asking === null) {
+    const turn = turns[last];
+    return (
+      <button onClick={() => setOpen(true)} className="hem-in flex items-end gap-2 text-left" aria-expanded={false}>
+        <HemAvatar />
+        <span className="max-w-[85%] rounded-2xl rounded-bl-md bg-surface px-4 py-2.5 text-sm" style={{ boxShadow: "var(--lift)" }}>
+          <span className="block text-xs text-muted">{t("Earlier, at {time}", { time: time(turn.at) })}</span>
+          <span className="font-semibold">{turn.answer.headline}</span> <span className="text-muted">{t("More")} ›</span>
+        </span>
+      </button>
+    );
+  }
 
   return (
     <section className="flex flex-col gap-2">

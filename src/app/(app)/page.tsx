@@ -126,6 +126,7 @@ export default function HomePage() {
         <AskHem
           topic="today"
           per="part"
+          fold
           intro={
             hour < 12
               ? t("Morning {name}! I've had a look at your day.", { name: profile.display_name || "" })

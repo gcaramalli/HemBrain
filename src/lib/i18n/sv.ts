@@ -1030,4 +1030,5 @@ export const sv: Record<string, string> = {
   "Now": "Nu",
   "I've used up this month's budget. I'll be back on the 1st.": "Jag har gjort slut på månadens budget. Jag är tillbaka den 1:a.",
   "Sorry, I couldn't think straight just now. Try me again in a moment?": "Förlåt, jag kunde inte tänka klart just nu. Försök igen om en stund?",
+  "More": "Mer",
 };

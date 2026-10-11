@@ -1030,4 +1030,5 @@ export const fr: Record<string, string> = {
   "Now": "Maintenant",
   "I've used up this month's budget. I'll be back on the 1st.": "J'ai épuisé le budget du mois. Je reviens le 1er.",
   "Sorry, I couldn't think straight just now. Try me again in a moment?": "Désolé, je n'arrive pas à réfléchir là. Tu réessaies dans un instant ?",
+  "More": "Plus",
 };
