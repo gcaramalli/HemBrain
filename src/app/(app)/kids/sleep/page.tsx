@@ -172,7 +172,9 @@ export default function SleepPage() {
       <AskHem
         topic="bedtime"
         kidId={kid.id}
-        question={t("Ask Hem when {name} should go to bed tonight", { name: kid.name })}
+        intro={t("I've been looking at {name}'s nights. Want my take for tonight?", { name: kid.name })}
+        question={t("When should I put {name} to bed?", { name: kid.name })}
+        more={{ label: t("And tomorrow's nap?"), topic: "nap" }}
         hint={t("Ask Hem “when should {name} go to bed tonight?”: it reads the last days here.", { name: kid.name })}
       />
 

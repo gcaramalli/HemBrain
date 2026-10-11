@@ -106,7 +106,9 @@ export function MealsPanel() {
 
       <AskHem
         topic="dinner"
-        question={t("Ask Hem what we should eat tonight")}
+        intro={t("I've seen what you ate this week and what you just bought.")}
+        question={t("What should we eat tonight?")}
+        more={{ label: t("Another idea?") }}
         hint={t("Ask Hem “what should we eat tonight?”: it looks at your recent meals, your recipes and what you just bought.")}
       />
 
