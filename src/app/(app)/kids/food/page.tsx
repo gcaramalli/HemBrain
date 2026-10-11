@@ -102,7 +102,9 @@ export default function KidFoodPage() {
       <AskHem
         topic="kid_food"
         kidId={kid.id}
-        question={t("Ask Hem what {name} should eat tonight", { name: kid.name })}
+        intro={t("I know what {name} loves, and what comes back untouched.", { name: kid.name })}
+        question={t("What could {name} eat tonight?", { name: kid.name })}
+        more={{ label: t("Another idea?") }}
         hint={t("Ask Hem “what should {name} eat tonight?”: it sees what {name} ate and liked here.", { name: kid.name })}
       />
 

@@ -9,6 +9,7 @@ import { EventRow } from "@/components/event-row";
 import { HubTile } from "@/components/hub-tile";
 import { fetchDueTodos, TodoRow, todoDay } from "@/components/todo-row";
 import { SendGift } from "@/components/send-gift";
+import { AskHem } from "@/components/ask-hem";
 import { CARE_KINDS, careKind, fetchAvailability, findSlot, isCareDay, slotAvailability } from "@/lib/care";
 import { addDays, dayKey, daysUntil, fmtDate, startOfDay } from "@/lib/dates";
 import { groupByDay } from "@/lib/events";
@@ -26,7 +27,7 @@ const TravelsTile = dynamic(() => import("@/components/travels-tile"), {
 
 // Home: the day at a glance, then a door to each part of the family's life.
 export default function HomePage() {
-  const { supabase, profile, kids, members, me, t } = useFamily();
+  const { supabase, profile, kids, members, me, ai, t } = useFamily();
   const [occasions, setOccasions] = useState<Occasion[]>([]);
   const [events, setEvents] = useState<EventOccurrence[]>([]);
   const [answers, setAnswers] = useState<CareAvailability[]>([]);
@@ -120,6 +121,23 @@ export default function HomePage() {
       </div>
 
       <SendGift />
+
+      {ai && (
+        <AskHem
+          topic="today"
+          per="part"
+          fold
+          intro={
+            hour < 12
+              ? t("Morning {name}! I've had a look at your day.", { name: profile.display_name || "" })
+              : hour < 17
+                ? t("I've had a look at the rest of your day.")
+                : t("Evening {name}. I've had a look at tomorrow.", { name: profile.display_name || "" })
+          }
+          question={hour < 17 ? t("What's up today?") : t("What's up tomorrow?")}
+          hint=""
+        />
+      )}
 
       {kids.map((kid) => (
         <KidCard key={kid.id} kid={kid} events={events} answers={answers} onChanged={loadEvents} />
