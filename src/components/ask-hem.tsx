@@ -175,9 +175,16 @@ export function AskHem({
             <MyBubble text={turn.question} />
             <HemBubble>
               <p className="font-semibold">{turn.answer.headline}</p>
-              {turn.answer.details.slice(0, Math.max(0, lines - 1)).map((d) => (
-                <p key={d} className="hem-in mt-1">{d}</p>
-              ))}
+              {lines > 1 && (
+                <ul className="mt-1.5 flex flex-col gap-1">
+                  {turn.answer.details.slice(0, lines - 1).map((d) => (
+                    <li key={d} className="hem-in flex gap-2">
+                      <span aria-hidden className="mt-[0.55em] size-1 shrink-0 rounded-full bg-muted" />
+                      <span>{d}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </HemBubble>
           </div>
         );
@@ -186,11 +193,9 @@ export function AskHem({
       {asking !== null && (
         <>
           <MyBubble text={asking} />
-          <div className="hem-in flex items-end gap-2">
+          {/* Hem's face is the dots: they bounce while Hem thinks, no second set in a bubble. */}
+          <div className="hem-in flex items-center gap-2" role="status" aria-label={t("Hem is thinking")}>
             <HemAvatar thinking />
-            <div className="rounded-2xl rounded-bl-md bg-surface px-4 py-3" style={{ boxShadow: "var(--lift)" }}>
-              <ThinkingDots size={7} label={t("Hem is thinking")} />
-            </div>
           </div>
         </>
       )}
