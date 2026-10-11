@@ -1031,4 +1031,7 @@ export const sv: Record<string, string> = {
   "Try again": "Försök igen",
   "Can you check again?": "Kan du kolla igen?",
   "Let me look…": "Jag tittar…",
+  "That's a lot of questions for today. Shall we pick this up tomorrow?": "Det har blivit många frågor i dag. Ska vi ta det i morgon?",
+  "Or tell me…": "Eller berätta…",
+  "Tell Hem": "Skriv till Hem",
 };

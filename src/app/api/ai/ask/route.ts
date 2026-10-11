@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { aiEnabled, BudgetExceededError, extract } from "@/lib/ai";
 import { callTool } from "@/lib/mcp/call-tool";
-import { utcToStockholm } from "@/lib/mcp/time";
+import { stockholmToUtc, utcToStockholm } from "@/lib/mcp/time";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { dinnerData, todayBrief } from "@/lib/hem-brief";
 import { getSession } from "@/lib/session";
 
@@ -12,6 +13,18 @@ const Answer = z.object({
 
 const ASK_TOPICS = ["bedtime", "nap", "kid_food", "dinner", "today"] as const;
 type Topic = (typeof ASK_TOPICS)[number];
+// What each conversation is about, so a typed message stays on it.
+const SUBJECTS: Record<Topic, string> = {
+  bedtime: "the kid's sleep",
+  nap: "the kid's sleep",
+  kid_food: "what the kid eats",
+  dinner: "what to cook and eat",
+  today: "the family's day and what needs doing",
+};
+// A conversation per topic and day stays short: the budget is shared by the family.
+const DAILY_MESSAGES = 6;
+type Exchange = { q: string; a: string };
+
 const LANGUAGES = { en: "English", fr: "French (tutoie, ton complice)", sv: "Swedish" } as const;
 
 type Ctx = { kid: string; evening: boolean };
@@ -53,8 +66,24 @@ export async function POST(req: Request) {
   const session = await getSession();
   if (!session) return Response.json({ error: "unauthorized" }, { status: 401 });
 
-  const { topic, kidId, previous } = (await req.json()) as { topic?: Topic; kidId?: string; previous?: string[] };
+  const { topic, kidId, previous, message, history } = (await req.json()) as {
+    topic?: Topic;
+    kidId?: string;
+    previous?: string[];
+    message?: string; // typed (or dictated) by the user instead of the suggested question
+    history?: Exchange[];
+  };
   if (!topic || !ASK_TOPICS.includes(topic)) return Response.json({ error: "unknown topic" }, { status: 400 });
+  const typed = message?.trim().slice(0, 300) || null;
+
+  const since = stockholmToUtc(utcToStockholm(new Date().toISOString()).slice(0, 10));
+  const { count } = await createAdminClient()
+    .from("ai_usage")
+    .select("id", { count: "exact", head: true })
+    .eq("profile_id", session.profile.id)
+    .eq("feature", `ask_${topic}`)
+    .gte("created_at", since);
+  if ((count ?? 0) >= DAILY_MESSAGES) return Response.json({ error: "enough for today", limit: true }, { status: 429 });
   const q = QUESTIONS[topic];
 
   let kid = "";
@@ -77,7 +106,15 @@ export async function POST(req: Request) {
       const brief = await todayBrief(session.supabase, ctx, evening);
       tools.push(`## the family's facts for ${evening ? "tomorrow" : "today"} (${brief.focus}), already worked out\n${brief.text}`);
     }
-    const again = previous?.length ? `\nYou already suggested: ${previous.slice(-3).join(" / ")}. Suggest something different.` : "";
+    const again = previous?.length && !typed ? `\nYou already suggested: ${previous.slice(-3).join(" / ")}. Suggest something different.` : "";
+    const before = (history ?? [])
+      .slice(-2)
+      .map((x) => `${name ?? "They"}: ${x.q.slice(0, 300)}\nHem: ${x.a.slice(0, 600)}`)
+      .join("\n");
+    const ask = typed
+      ? `${before ? `The conversation so far:\n${before}\n\n` : `Context: ${q.ask({ kid, evening })}\n\n`}${name ?? "They"} now says: "${typed}"
+Answer that, about ${SUBJECTS[topic]} only. If it is about something else, say kindly in the headline that here you only help with ${SUBJECTS[topic]} and that they can ask you anything in Claude; then no bullets.`
+      : q.ask({ kid, evening }) + again;
     const answer = await extract(
       { familyId: session.profile.family_id, profileId: session.profile.id, feature: `ask_${topic}` },
       Answer,
@@ -87,7 +124,7 @@ Base what you say on the family's data below (quote the real times, dates and na
 Now (Europe/Stockholm): ${now}.
 
 ${tools.join("\n\n").slice(0, 30000)}`,
-      [{ text: q.ask({ kid, evening }) + again }],
+      [{ text: ask }],
     );
     return Response.json(answer);
   } catch (e) {

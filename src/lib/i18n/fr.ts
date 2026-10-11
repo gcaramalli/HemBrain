@@ -1031,4 +1031,7 @@ export const fr: Record<string, string> = {
   "Try again": "Réessaie",
   "Can you check again?": "Tu peux revérifier ?",
   "Let me look…": "Je regarde…",
+  "That's a lot of questions for today. Shall we pick this up tomorrow?": "Ça fait beaucoup de questions pour aujourd'hui. On en reparle demain ?",
+  "Or tell me…": "Ou dis-moi…",
+  "Tell Hem": "Écrire à Hem",
 };
