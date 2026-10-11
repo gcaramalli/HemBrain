@@ -4,8 +4,8 @@ Priorities as of 2026-09-26. Build one batch at a time. The direction behind the
 
 ## 0. Hygiene (before anything else)
 - [ ] Remove `MCP_TOKEN` + `FAMILY_ID` from Vercel (old single-family connector token; personal links replace it)
-- [ ] Verified sending domain in Resend → password reset and email confirmation for everyone
-      (required before opening to other families; then turn "Confirm email" back on in Supabase)
+- [x] Verified sending domain in Resend (hembrain.com) → password reset for everyone (Supabase SMTP, 2026-10)
+- [ ] Turn "Confirm email" back on in Supabase (required before opening to other families)
 - [ ] Production on a `main` branch
 
 ## 1. Groceries (daily use)

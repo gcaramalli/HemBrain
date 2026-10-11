@@ -110,7 +110,7 @@ export function TravelsHeader({ back, backLabel, action }: { back: string; backL
   );
 }
 
-// Hembrain admin (super admins): usage across families, feedback, AI budgets.
+// Hembrain admin (super admins): usage across families, feedback, AI budgets, the weekly news email.
 export function StatsHeader() {
   const { t } = useFamily();
   return (
@@ -120,6 +120,7 @@ export function StatsHeader() {
           { href: "/stats", label: t("Usage") },
           { href: "/stats/feedback", label: t("Feedback") },
           { href: "/stats/ai", label: t("AI budget") },
+          { href: "/stats/digest", label: t("News") },
         ]}
       />
     </PageHeader>

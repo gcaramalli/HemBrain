@@ -8,7 +8,7 @@ next steps in `ROADMAP.md`.
 Next.js 16 + Supabase. All data lives in Supabase Postgres; every table is scoped by `family_id` and
 protected by RLS (`private.my_family_id()`, in a schema the API does not expose).
 
-Supabase project: **Caramalli Familly brain** (`jvzwbguwoafayxmdirnj`, in Jenny's org, eu-west-1). Migrations 0001–0026 are applied. Sign-up is open (multi-family); joining a family needs an invite code (`invites.code`, link `/signup?invite=…`), see `handle_new_user()` in `0004_dashboard_users_join_invited_family.sql` (accounts created from the Supabase dashboard have no metadata and join the family that invited their email). A user's family = `profiles.family_id`.
+Supabase project: **Caramalli Familly brain** (`jvzwbguwoafayxmdirnj`, in Jenny's org, eu-west-1). Migrations 0001–0027 are applied. Sign-up is open (multi-family); joining a family needs an invite code (`invites.code`, link `/signup?invite=…`), see `handle_new_user()` in `0004_dashboard_users_join_invited_family.sql` (accounts created from the Supabase dashboard have no metadata and join the family that invited their email). A user's family = `profiles.family_id`.
 
 ## Adding things for the family
 
@@ -88,6 +88,12 @@ Rules of thumb:
   stay visible `HISTORY_DAYS` (60) for recaps, people and projects carry `notes` (who owns what) for routing. `priority` puts an item first everywhere; the Me tab of /work = priorities, my own to-dos (`kind` todo), unsorted, waiting on others, and the tab switches (`profiles.work_hidden_tabs` hides People / Projects / Meetings, data kept). Delete a person / project / meeting from the bottom of its sheet (items stay, unsorted). Owner-only RLS like `private_boards`. The one private part the connector reaches
   (`get_work` / `add_work_items` / `update_work_item` / `set_work_entry`), always filtered by the token owner's `profile_id`
   and refused for the legacy family token.
+- `digests` — the weekly news email (`docs/weekly-digest.md`): a Claude Code routine writes a draft every Sunday from the
+  week's merged PRs (`subject` / `body` / `nudge` as `{en, fr, sv}` jsonb, light markdown rendered by `src/lib/digest-format.ts`),
+  a super admin reads, edits, tests and sends it in Hembrain admin → News (`/stats/digest`, `/api/digest/send`, Resend batch
+  API in `src/lib/digest.ts`, `RESEND_API_KEY`). Recipients = `digest_recipients()` (super admins only): every account without
+  `profiles.digest_opt_out`, `inactive` = family quiet for 14 days → gets `nudge`. Opt out in Personal settings or through the
+  signed link in the email (`/unsubscribe`, public; one-click `List-Unsubscribe` posts to `/api/digest/unsubscribe`).
 - `feedback` — ideas / bugs sent from Settings → Give feedback (own rows only); super admins read them through
   `hembrain_feedback()` and set `status` (new/planned/done/declined) in Hembrain admin → Feedback (`/stats/feedback`).
 - `ai_budgets` (per family `plan` free/paid + `monthly_limit_usd`, no row = free at `FREE_MONTHLY_LIMIT_USD` = $1,

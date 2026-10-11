@@ -16,6 +16,7 @@ export default function ProfilePage() {
   const [emoji, setEmoji] = useState(me?.emoji ?? "🙂");
   const [lang, setLang] = useState<Locale>(locale);
   const [birthdate, setBirthdate] = useState(me?.birthdate ?? "");
+  const [news, setNews] = useState(!profile.digest_opt_out);
   const [saved, setSaved] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [pwMessage, setPwMessage] = useState<string | null>(null);
@@ -34,7 +35,7 @@ export default function ProfilePage() {
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    await supabase.from("profiles").update({ display_name: name, color, locale: lang }).eq("id", profile.id);
+    await supabase.from("profiles").update({ display_name: name, color, locale: lang, digest_opt_out: !news }).eq("id", profile.id);
     // Keep the calendar "member" row in sync with the profile.
     if (me) await supabase.from("members").update({ name, color, emoji, birthdate: birthdate || null }).eq("id", me.id);
     setSaved(true);
@@ -92,6 +93,13 @@ export default function ProfilePage() {
               <option key={l.id} value={l.id}>{l.label}</option>
             ))}
           </select>
+        </label>
+        <label className="flex items-start gap-3">
+          <input type="checkbox" className="mt-1 h-5 w-5" checked={news} onChange={(e) => { setNews(e.target.checked); changed(); }} />
+          <span>
+            {t("What's new in Hembrain, by email")}
+            <span className="block text-xs text-muted">{t("A short email on Sunday, only in weeks with something new.")}</span>
+          </span>
         </label>
         <p className="text-sm text-muted">{profile.email} · {t(profile.role)}</p>
         <button className="btn">{saved ? `✓ ${t("Saved")}` : t("Save")}</button>
