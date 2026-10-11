@@ -2,11 +2,12 @@ import { z } from "zod";
 import { aiEnabled, BudgetExceededError, extract } from "@/lib/ai";
 import { callTool } from "@/lib/mcp/call-tool";
 import { utcToStockholm } from "@/lib/mcp/time";
+import { dinnerData, todayBrief } from "@/lib/hem-brief";
 import { getSession } from "@/lib/session";
 
 const Answer = z.object({
   headline: z.string().describe("Your answer as one short spoken sentence, e.g. 'I'd put him to bed around 19:15.'"),
-  details: z.array(z.string()).describe("2 to 4 short sentences: why, citing the real data (times, dates, names), and what to do"),
+  details: z.array(z.string()).describe("2 or 3 bullet points of at most 12 words each: the reason, with a real time, date or name"),
 });
 
 const ASK_TOPICS = ["bedtime", "nap", "kid_food", "dinner", "today"] as const;
@@ -17,7 +18,7 @@ type Ctx = { kid: string; evening: boolean };
 type Tool = [string, Record<string, unknown>];
 
 // What Hem is asked for each question, and which connector tools it reads first.
-const QUESTIONS: Record<Topic, { tools: (c: Ctx) => Tool[]; ask: (c: Ctx) => string; kid?: true }> = {
+const QUESTIONS: Record<Topic, { tools?: (c: Ctx) => Tool[]; ask: (c: Ctx) => string; kid?: true }> = {
   bedtime: {
     kid: true,
     tools: ({ kid }) => [["get_kid_sleep", { kid }]],
@@ -37,20 +38,12 @@ const QUESTIONS: Record<Topic, { tools: (c: Ctx) => Tool[]; ask: (c: Ctx) => str
       `What should ${kid} eat tonight? Use what ${kid} loves and refuses, balance ${kid}'s week, and fit ${kid}'s age. Give 2 or 3 concrete ideas.`,
   },
   dinner: {
-    tools: () => [["dinner_ideas", {}], ["get_restock_suggestions", {}]],
     ask: () =>
-      `What should we cook tonight? Suggest 2 or 3 dinners: prefer favourites and recipes whose ingredients were bought recently, avoid what was eaten in the last days, and balance the week (fill the food groups it lacks). Say what is missing to buy.`,
+      `What should we cook tonight? Suggest 2 or 3 dinners that balance the last two weeks: fill the food groups that were missing or rare (fish, legumes, vegetables…), and avoid what was eaten in the last days. Use a saved recipe when one fits, otherwise a simple idea.`,
   },
   today: {
-    tools: () => [
-      ["get_events", { days: 2 }],
-      ["get_occasions", { days: 7 }],
-      ["get_papers", {}],
-      ["get_list", {}],
-      ["get_restock_suggestions", {}],
-    ],
     ask: ({ evening }) =>
-      `What's up ${evening ? "tomorrow" : "today"}? The app already lists the events, so don't read the calendar back. Point out what the screen doesn't say: clashes, a drop-off or pick-up nobody is down for, late to-dos, a contract deadline or an expiry coming up, a birthday to wish, something to prepare or buy ${evening ? "tonight for tomorrow" : "today"}. Only what matters; if it's a calm day, say so warmly.`,
+      `What's up ${evening ? "tomorrow" : "today"}? The app already shows the events, so don't read them back. Say what needs doing or deciding: a drop-off or pick-up NOBODY has confirmed (say who could), late or due to-dos, a birthday to wish, a contract deadline, a clash. If nothing needs doing, say it's a calm day, warmly.`,
   },
 };
 
@@ -78,24 +71,18 @@ export async function POST(req: Request) {
   const language = LANGUAGES[session.profile.locale] ?? "English";
 
   try {
-    const tools = await Promise.all(q.tools({ kid, evening }).map(async ([tool, args]) => `## ${tool}\n${await callTool(ctx, tool, args)}`));
+    const tools = await Promise.all((q.tools?.({ kid, evening }) ?? []).map(async ([tool, args]) => `## ${tool}\n${await callTool(ctx, tool, args)}`));
+    if (topic === "dinner") tools.push(await dinnerData(session.supabase, ctx));
     if (topic === "today") {
-      // To-dos due by tomorrow, from every to-do list (get_list reads one list).
-      const until = utcToStockholm(new Date(Date.now() + 86400000).toISOString()).slice(0, 10);
-      const { data: todos } = await session.supabase
-        .from("list_items")
-        .select("title, due_date, lists!inner(kind)")
-        .eq("lists.kind", "todo")
-        .eq("done", false)
-        .lte("due_date", until);
-      tools.push(`## open to-dos due by ${until}\n${JSON.stringify((todos ?? []).map((t) => ({ title: t.title, due: t.due_date })))}`);
+      const brief = await todayBrief(session.supabase, ctx, evening);
+      tools.push(`## the family's facts for ${evening ? "tomorrow" : "today"} (${brief.focus}), already worked out\n${brief.text}`);
     }
     const again = previous?.length ? `\nYou already suggested: ${previous.slice(-3).join(" / ")}. Suggest something different.` : "";
     const answer = await extract(
       { familyId: session.profile.family_id, profileId: session.profile.id, feature: `ask_${topic}` },
       Answer,
       `You are Hem, the family's assistant in the Hembrain app, talking with ${name ?? "a parent"} like a friend who knows the family well. Write in ${language}.
-Speak in the first person ("I'd…", "I see…") and to ${name ?? "them"} directly; you may use their first name once. Warm, natural and concrete, never robotic: no headings, no "Here is", no lists of data read back.
+Speak in the first person ("I'd…", "I see…") and to ${name ?? "them"} directly. Warm, natural and brief, never robotic: no "Here is", no data read back. The headline is what you'd say out loud; each bullet is a short reason ("Nap ended at 14:10", "No fish this week").
 Base what you say on the family's data below (quote the real times, dates and names) and on general knowledge; if little is logged, say your advice is rough.
 Now (Europe/Stockholm): ${now}.
 

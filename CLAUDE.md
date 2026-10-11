@@ -70,8 +70,10 @@ Rules of thumb:
   in the app a little conversation with Hem (`AskHem` in `src/components/ask-hem.tsx`: Hem's line with its avatar, the question as
   a chip in the user's words, bouncing dots for at least ~1.5 s, the answer revealed line by line, a follow-up chip, the day's
   answers kept in localStorage). `/api/ai/ask` (topics bedtime, nap, kid_food, dinner, today = "What's up today?" on Home under
-  the gifts, tomorrow after 17:00) runs the same connector tools in-process with `callTool` (`src/lib/mcp/call-tool.ts`), then the
-  metered in-app model, prompted to speak as Hem in the first person; without an AI key they fall back to a hint (Home: hidden).
+  the gifts, tomorrow after 17:00) runs the same connector tools in-process with `callTool` (`src/lib/mcp/call-tool.ts`); `today` and `dinner` get
+  facts worked out in `src/lib/hem-brief.ts` (unconfirmed drop-offs / pick-ups, to-dos, anniversaries as dates to remember,
+  paper deadlines; dinner = recent meals + recipes, not purchases), then the metered in-app model, prompted to speak as Hem
+  in the first person (a spoken headline + 2–3 short reasons); without an AI key they fall back to a hint (Home: hidden).
 - `care_availability` — per kid/day/`kind`/parent: `available` true ("I can") or false ("I can't"), no row = hasn't said. The one who goes confirms ("I'm going") = the care event's `responsible_member_id` (`src/components/care-slot.tsx`)
 - `push_subscriptions` — one row per device with reminders on (own rows only)
 - `lists` (`kind` grocery → Kitchen, todo → Calendar → To-do, and open to-dos with a `due_date` also show on their day in the calendar and on Today, late ones on today (`src/components/todo-row.tsx`); both rendered by `src/components/lists-view.tsx`) and `list_items` (`category` = aisle id from `src/lib/categories.ts`)
