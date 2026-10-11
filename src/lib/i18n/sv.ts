@@ -981,4 +981,5 @@ export const sv: Record<string, string> = {
   "The total must be 100%": "Summan måste vara 100 %",
   "Still asleep": "Sover fortfarande",
   "Meet Hem, in Claude or ChatGPT": "Möt Hem, i Claude eller ChatGPT",
+  "Ask Hem “what should we eat tonight?”: it looks at your recent meals, your recipes and what you just bought.": "Fråga Hem ”vad ska vi äta i kväll?”: den tittar på era senaste måltider, era recept och det ni just har köpt.",
 };
