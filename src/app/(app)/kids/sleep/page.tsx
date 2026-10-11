@@ -1,6 +1,6 @@
 "use client";
 
-import { ThinkingDots } from "@/components/thinking-dots";
+import { AskHem } from "@/components/ask-hem";
 import { Moon, Sun } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useFamily } from "@/components/family-context";
@@ -169,10 +169,12 @@ export default function SleepPage() {
         </section>
       )}
 
-      <p className="flex items-start gap-2 rounded-xl bg-accent-soft px-4 py-3 text-sm">
-        <span className="mt-1.5 shrink-0"><ThinkingDots size={6} still /></span>
-        <span>{t("Ask Hem “when should {name} go to bed tonight?”: it reads the last days here.", { name: kid.name })}</span>
-      </p>
+      <AskHem
+        topic="bedtime"
+        kidId={kid.id}
+        question={t("Ask Hem when {name} should go to bed tonight", { name: kid.name })}
+        hint={t("Ask Hem “when should {name} go to bed tonight?”: it reads the last days here.", { name: kid.name })}
+      />
 
       {/* Newest first, days and the entries within each day alike. */}
       {days.map((d) => (

@@ -55,10 +55,8 @@ Family members: ${names || "unknown"}. Today is ${new Date().toISOString().slice
 Only use dates and amounts that are in the document. For a purchase receipt, warranty_until = the stated warranty, else the purchase date + 3 years (Swedish reklamationsrätt).
 Write title, summary and detail labels in ${language}; keep provider names and Swedish terms (självrisk, uppsägningstid) as they are when useful.`,
       [
-        image
-          ? { type: "image", source: { type: "base64", media_type: image, data } }
-          : { type: "document", source: { type: "base64", media_type: "application/pdf", data } },
-        { type: "text", text: "File this document." },
+        { file: { mimeType: image ?? "application/pdf", data } },
+        { text: "File this document." },
       ],
     );
     return Response.json(paper);

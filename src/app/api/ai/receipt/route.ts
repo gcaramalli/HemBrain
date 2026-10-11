@@ -45,8 +45,8 @@ Skip non-items: totals, VAT/moms, discounts/rabatt, deposits/pant, bag fees, pay
 Name each item the way the family already does when it is the same product. Their usual names: ${known.join(", ") || "none yet"}.
 Otherwise use a short plain name in the language of those usual names (English if there are none).`,
       [
-        { type: "image", source: { type: "base64", media_type: mediaType, data: Buffer.from(await file.arrayBuffer()).toString("base64") } },
-        { type: "text", text: "List the items on this receipt." },
+        { file: { mimeType: mediaType, data: Buffer.from(await file.arrayBuffer()).toString("base64") } },
+        { text: "List the items on this receipt." },
       ],
     );
     return Response.json(receipt);
