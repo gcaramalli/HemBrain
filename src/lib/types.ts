@@ -11,6 +11,7 @@ export type Profile = {
   color: string;
   locale: "en" | "fr" | "sv";
   work_hidden_tabs?: string[]; // Work tabs this account hides (0021)
+  digest_opt_out?: boolean; // no weekly news email (0027)
 };
 
 export type Member = {
