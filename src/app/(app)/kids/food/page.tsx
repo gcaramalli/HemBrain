@@ -88,7 +88,6 @@ export default function KidFoodPage() {
         question={t("What could {name} eat tonight?", { name: kid.name })}
         more={{ label: t("Another idea?") }}
         fold
-        compact
         hint={t("Ask Hem “what should {name} eat tonight?”: it sees what {name} ate and liked here.", { name: kid.name })}
       />
 

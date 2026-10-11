@@ -84,6 +84,30 @@ function Typed({ text, onDone }: { text: string; onDone?: () => void }) {
   );
 }
 
+// Hem's opening line. Before the first question it is the button that asks it,
+// with the send arrow at its end (shown once the line is written).
+function OpeningBubble({ text, ask }: { text: React.ReactNode; ask: { label: string; ready: boolean; go: () => void } | null }) {
+  if (!ask) return <HemBubble>{text}</HemBubble>;
+  return (
+    <button onClick={ask.go} disabled={!ask.ready} className="hem-in group flex items-end gap-2 text-left">
+      <HemAvatar />
+      <span
+        className="flex max-w-[85%] items-center gap-3 rounded-2xl rounded-bl-md bg-surface py-1.5 pl-4 pr-1.5 text-[15px] leading-snug transition-transform group-active:scale-[0.98]"
+        style={{ boxShadow: "var(--lift)" }}
+      >
+        <span className="py-1">{text}</span>
+        <span className="sr-only">{ask.label}</span>
+        <span
+          aria-hidden
+          className={`flex size-8 shrink-0 items-center justify-center rounded-full bg-foreground text-background transition-opacity duration-300 ${ask.ready ? "hem-nudge opacity-100" : "opacity-0"}`}
+        >
+          <ArrowUp size={16} strokeWidth={2.5} />
+        </span>
+      </span>
+    </button>
+  );
+}
+
 function MyBubble({ text }: { text: string }) {
   return (
     <div className="hem-in flex justify-end">
@@ -153,7 +177,6 @@ export function AskHem({
   hint,
   per = "day",
   fold,
-  compact,
 }: {
   topic: AskTopic;
   kidId?: string;
@@ -164,9 +187,6 @@ export function AskHem({
   per?: "day" | "part";
   // Answers from an earlier visit come back folded to their first line (Home).
   fold?: boolean;
-  // At the top of a page: until something is asked, only Hem's line and the
-  // reply, no text field, so the page's own content stays close.
-  compact?: boolean;
 }) {
   const { ai, t, profile, locale } = useFamily();
   const key = `hem:${profile.id}:${topic}:${kidId ?? ""}:${period(per)}`;
@@ -286,7 +306,11 @@ export function AskHem({
       {opening === "dots" ? (
         <TypingBubble label={t("Hem is thinking")} />
       ) : (
-        <HemBubble>{opening === "typing" ? <Typed text={intro} onDone={() => setOpening("done")} /> : intro}</HemBubble>
+        <OpeningBubble
+          text={opening === "typing" ? <Typed text={intro} onDone={() => setOpening("done")} /> : intro}
+          // The first question is always the same: tapping Hem's line asks it.
+          ask={turns.length === 0 && !asking && !failed ? { label: question, ready: opening === "done", go: () => ask(question, topic) } : null}
+        />
       )}
 
       {turns.map((turn, i) => {
@@ -340,9 +364,7 @@ export function AskHem({
         <div className="flex flex-wrap gap-2 pl-10">
           {failed ? (
             <Reply secondary onClick={() => ask(failed.q, failed.topic, failed.typed)}>{t("Try again")}</Reply>
-          ) : turns.length === 0 ? (
-            <Reply onClick={() => ask(question, topic)}>{question}</Reply>
-          ) : more ? (
+          ) : turns.length === 0 ? null : more ? (
             <Reply onClick={() => ask(more.label, more.topic ?? topic)}>{more.label}</Reply>
           ) : (
             <Reply secondary onClick={() => ask(t("Can you check again?"), topic)}>{t("Can you check again?")}</Reply>
@@ -351,7 +373,8 @@ export function AskHem({
       )}
 
       {/* Or say it in your own words. The keyboard's mic dictates for free. */}
-      {!busy && !(compact && turns.length === 0 && !failed) && (
+      {/* Only once Hem has answered: the first question needs no typing. */}
+      {!busy && turns.length > 0 && (
         <form
           className="hem-in hem-offer ml-10 flex items-center gap-1 rounded-full bg-surface py-1 pl-4 pr-1"
           style={{ boxShadow: "var(--lift)" }}

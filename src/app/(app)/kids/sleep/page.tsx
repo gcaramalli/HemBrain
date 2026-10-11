@@ -129,7 +129,6 @@ export default function SleepPage() {
         question={t("When should I put {name} to bed?", { name: kid.name })}
         more={{ label: t("And tomorrow's nap?"), topic: "nap" }}
         fold
-        compact
         hint={t("Ask Hem “when should {name} go to bed tonight?”: it reads the last days here.", { name: kid.name })}
       />
 

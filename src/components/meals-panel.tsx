@@ -75,7 +75,6 @@ export function MealsPanel() {
         question={t("What should we eat tonight?")}
         more={{ label: t("Another idea?") }}
         fold
-        compact
         hint={t("Ask Hem “what should we eat tonight?”: it looks at your recent meals, your recipes and what you just bought.")}
       />
 

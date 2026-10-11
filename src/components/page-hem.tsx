@@ -36,7 +36,6 @@ export function PageHem({ topic, kid }: { topic: PageTopic; kid?: Member }) {
       more={line.more ? { label: line.more } : undefined}
       hint=""
       fold
-      compact
     />
   );
 }
