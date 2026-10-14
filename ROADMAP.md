@@ -68,6 +68,8 @@ Priorities as of 2026-09-26. Build one batch at a time. The direction behind the
 - [x] Papers (contracts, insurance, warranties, IDs): renewal / last day to cancel on Today and in the evening push,
       Claude reads a PDF or photo, `get_papers` review; family or private, private tiles lockable with a code
 - [x] Evening reminders and "you've been given something to do" (web push, Vercel Cron)
+- [x] Partner notifications: the other parent is told about changes that concern them, also when made through Hem
+      (`docs/notifications.md`; phase 2 = evening "what changed" summary, not built)
 - [x] Undo instead of confirmation dialogs; calmer ink-on-paper interface where colour means a person
 - [x] Little gifts between family members ("à toi, à moi"): send an emoji + note, unwrapped on next open; also via Claude (`send_gift`)
 - [x] Shared calendar, lists, recipes, notes, admin, profile (PWA)
