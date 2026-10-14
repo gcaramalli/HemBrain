@@ -564,7 +564,7 @@ export function registerTools(server: McpServer) {
           if (row.starts_at && e.end === undefined && ev.ends_at) {
             copy.ends_at = new Date(new Date(row.starts_at as string).getTime() + duration(ev)!).toISOString();
           }
-          const { error: skipError } = await db.from("events").update({ skip_dates: [...(ev.skip_dates ?? []), only_date] }).eq("id", id).eq("family_id", familyId());
+          const { error: skipError } = await db.from("events").update({ skip_dates: [...(ev.skip_dates ?? []), only_date], updated_by: createdBy() }).eq("id", id).eq("family_id", familyId());
           if (skipError) throw new Error(skipError.message);
           const { data, error } = await db.from("events").insert(copy).select("id").single();
           if (error) throw new Error(error.message);
@@ -573,7 +573,7 @@ export function registerTools(server: McpServer) {
       }
       const { data, error } = await db
         .from("events")
-        .update(row)
+        .update({ ...row, updated_by: createdBy() })
         .eq("id", id)
         .eq("family_id", familyId())
         .select("title")
@@ -600,11 +600,13 @@ export function registerTools(server: McpServer) {
       if (only_date) {
         const ev = await seriesEvent(id);
         if (ev.recurrence) {
-          const { error } = await db.from("events").update({ skip_dates: [...(ev.skip_dates ?? []), only_date] }).eq("id", id).eq("family_id", familyId());
+          const { error } = await db.from("events").update({ skip_dates: [...(ev.skip_dates ?? []), only_date], updated_by: createdBy() }).eq("id", id).eq("family_id", familyId());
           if (error) throw new Error(error.message);
           return text({ deleted: ev.title, only_date });
         }
       }
+      // Sign the row first: the other parent is told who cancelled it.
+      await db.from("events").update({ updated_by: createdBy() }).eq("id", id).eq("family_id", familyId());
       const { data, error } = await db
         .from("events")
         .delete()

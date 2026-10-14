@@ -7,7 +7,6 @@ import { MemberSelect } from "./member-select";
 import { useToast } from "./toast";
 import { dayKey, toLocalInput } from "@/lib/dates";
 import { RECURRENCES, type Recurrence } from "@/lib/recurrence";
-import { notifyAssignment } from "@/lib/push-client";
 import type { CalendarEvent, Member } from "@/lib/types";
 
 // An event being created or edited. When it comes from the calendar it is one
@@ -60,7 +59,7 @@ function row(d: Draft) {
 type Scope = "one" | "all";
 
 export function EventForm({ initial, onDone }: { initial: Draft; onDone: () => void }) {
-  const { supabase, t, me, ai, members, memberById } = useFamily();
+  const { supabase, t, ai, members } = useFamily();
   const toast = useToast();
   // Edit the occurrence that was tapped, not the first one of the series.
   const [d, setD] = useState<Draft>(() =>
@@ -147,7 +146,6 @@ export function EventForm({ initial, onDone }: { initial: Draft; onDone: () => v
     }
     setBusy(false);
     if (res.error) return setError(res.error.message);
-    if (d.responsible_member_id !== initial.responsible_member_id || !initial.id) notifyAssignment(memberById(d.responsible_member_id), me, d);
     toast(initial.id ? t("Saved") : t("Added to the calendar"));
     onDone();
   }
