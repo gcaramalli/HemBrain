@@ -9,12 +9,20 @@ export const pushEnabled = () => Boolean(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KE
 
 let configured = false;
 
+// web-push wants a URL: a bare email ("someone@example.com") becomes mailto:,
+// otherwise every send throws before reaching a single device.
+function vapidSubject(raw: string | undefined) {
+  const s = raw?.trim();
+  if (!s) return "mailto:admin@example.com";
+  return /^(mailto:|https?:\/\/)/i.test(s) ? s : s.includes("@") ? `mailto:${s}` : `https://${s}`;
+}
+
 // Sends to every device of `profileId`; forgets devices that unsubscribed.
 export async function sendPush(profileId: string, message: PushMessage) {
   if (!pushEnabled()) return 0;
   if (!configured) {
     webpush.setVapidDetails(
-      process.env.VAPID_SUBJECT || "mailto:admin@example.com",
+      vapidSubject(process.env.VAPID_SUBJECT),
       process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
       process.env.VAPID_PRIVATE_KEY!,
     );
