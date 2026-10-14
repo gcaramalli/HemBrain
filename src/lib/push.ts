@@ -17,14 +17,19 @@ function vapidSubject(raw: string | undefined) {
   return /^(mailto:|https?:\/\/)/i.test(s) ? s : s.includes("@") ? `mailto:${s}` : `https://${s}`;
 }
 
+// Keys pasted as plain base64 (+ / =), quoted or with spaces are the same
+// bytes; web-push only takes the URL-safe form.
+const urlBase64 = (key: string) =>
+  key.trim().replace(/^["']|["']$/g, "").trim().replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
 // Sends to every device of `profileId`; forgets devices that unsubscribed.
 export async function sendPush(profileId: string, message: PushMessage) {
   if (!pushEnabled()) return 0;
   if (!configured) {
     webpush.setVapidDetails(
       vapidSubject(process.env.VAPID_SUBJECT),
-      process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-      process.env.VAPID_PRIVATE_KEY!,
+      urlBase64(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!),
+      urlBase64(process.env.VAPID_PRIVATE_KEY!),
     );
     configured = true;
   }
