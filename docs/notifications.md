@@ -18,7 +18,7 @@ phase 2 (an evening "what changed" summary) is not.
 | 7 | only edits the title or notes | | | ✅ |
 | **Kids** |||||
 | 8 | adds an event for a kid (doctor, BVC, preschool closed) | ✅ always | | |
-| 9 | "I'm going" / "I can't" on a drop-off or pick-up | ✅ (Kids tab, `/api/push/notify`, also in Hem's voice) | | |
+| 9 | "I'm going" on a drop-off or pick-up, or "I can't" while nobody else is going | ✅ | | |
 | 10 | moves a drop-off / pick-up in the next 48 h | ✅ | | |
 | 11 | changes the kid's usual times or days | | ✅ | |
 | 12 | logs sleep, meals, clothes | | | ✅ |
@@ -41,7 +41,7 @@ mode decides. Several changes by the same person at once become one push listing
 
 ## How it works
 
-1. `events` and `list_items` triggers (`private.log_activity`, migration 0029) write each
+1. `events`, `list_items` and `care_availability` triggers (`private.log_activity`, migration 0029) write each
    relevant change to `activity`: `before` (first state of the burst, null = created),
    `after` (latest, null = deleted), `actor` (profile) and `via_app`. A row stays pending
    90 s after its last change, so create + a few edits merge into one.
@@ -54,7 +54,9 @@ mode decides. Several changes by the same person at once become one push listing
 4. `src/lib/partner-notify.ts` claims due rows and decides recipients and wording. A
    one-off that replaces one date of a series ("this Friday Jenny picks up") is read as
    a change of that date, not as a new event plus a cancellation.
-5. Kids tab "I'm going" / "I can't" are still pushed by the app (`care-slot.tsx`), so
-   the same change made in the app is not told twice; made through Hem, it is told here.
+5. Kids tab answers are told here too, never by the phone (a timer in the page died as
+   soon as the app was closed). "I'm going" comes from the care event; "I can't" from
+   `care_availability` (migration 0030, row key `kid:day:kind:member`), so backing out
+   of a slot in the app is told once.
 
 Sent rows are deleted after 14 days (`hembrain-activity-cleanup`).

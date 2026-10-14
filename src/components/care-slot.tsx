@@ -7,7 +7,6 @@ import { assignSlot, findSlot, setAvailability, usualTime, type CareKind } from 
 import { fetchOccurrences } from "@/lib/events";
 import { fmtDate, formatTime } from "@/lib/dates";
 import { Sheet } from "./sheet";
-import { notifyAssignment } from "@/lib/push-client";
 import type { CareAvailability, EventOccurrence, Member } from "@/lib/types";
 
 // What I said about one slot: "going" (confirmed, I'm the event's responsible),
@@ -39,8 +38,6 @@ export function CareSlot({
   const [shown, setShown] = useState<Mine | undefined>(undefined); // optimistic value
   const [error, setError] = useState(false);
   const [open, setOpen] = useState(false);
-  const notifyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const before = useRef<Mine | undefined>(undefined); // my answer before this burst of taps
   const queue = useRef(Promise.resolve());
 
   const goerId = event?.responsible_member_id ?? null;
@@ -56,13 +53,9 @@ export function CareSlot({
   // The server state caught up: drop the optimistic value.
   const answers = availability.map((a) => `${a.member_id}:${a.available}`).join();
   useEffect(() => setShown(undefined), [event?.key, goerId, answers]);
-  useEffect(() => () => {
-    if (notifyTimer.current) clearTimeout(notifyTimer.current);
-  }, []);
 
   function change(next: Mine) {
     if (!me) return;
-    if (before.current === undefined) before.current = mine;
     setShown(next);
     setError(false);
     // Taps are applied one after the other, each against the latest state.
@@ -82,18 +75,8 @@ export function CareSlot({
       if (err) setError(true);
       onChanged();
     });
-    // Only tell the other parent once the tapping has settled, and only about
-    // what matters to them: I'm going, or I can't and nobody is going yet.
-    if (notifyTimer.current) clearTimeout(notifyTimer.current);
-    notifyTimer.current = setTimeout(() => {
-      const from = before.current;
-      before.current = undefined;
-      if (next === from) return;
-      const news = next === "going" ? "going" : next === "no" && (!goerId || goerId === me.id) ? "cant" : null;
-      if (!news) return;
-      const ev = { title: `${kind === "dropoff" ? "Drop-off" : "Pick-up"} ${kid.name}`, starts_at: new Date(`${day}T${usualTime(kid, kind)}:00`).toISOString(), all_day: false };
-      for (const a of adults) if (a.id !== me.id) notifyAssignment(a, me, ev, news);
-    }, 4000);
+    // The other parent hears "I'm going" / "I can't" from Hem, server side
+    // (src/lib/partner-notify.ts), once the tapping has settled.
   }
 
   const time = event ? formatTime(event.occurrence_start) : usualTime(kid, kind);
