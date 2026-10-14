@@ -84,6 +84,7 @@ export async function sendDueNotifications(db: SupabaseClient) {
   for (const group of groups.values()) {
     const [first] = group;
     const t = translator(first.locale);
+    // One person's failure must not cost the others their notification.
     sent += await sendPush(first.to, {
       title: "Hem",
       body:
@@ -92,6 +93,9 @@ export async function sendDueNotifications(db: SupabaseClient) {
           : [t("{name} made {count} changes:", { name: first.actor, count: group.length }), ...group.slice(0, 5).map((n) => `${ICON[n.kind]} ${n.line}`)].join("\n"),
       url: group.every((n) => n.url === first.url) ? first.url : "/",
       tag: `partner-${first.to}-${now.getTime()}`,
+    }).catch((e) => {
+      console.error("partner notify", e);
+      return 0;
     });
   }
   return { claimed: rows.length, sent };
