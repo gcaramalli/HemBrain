@@ -1,11 +1,11 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { careTitle } from "./care";
+import { careTitle, usualTime } from "./care";
 import { addDays, dayKey, startOfDay } from "./dates";
 import { expand } from "./events";
 import { BCP47, isLocale, translator, type Locale } from "./i18n";
 import { sendPush } from "@/lib/push";
-import type { CalendarEvent, ListItem, Member } from "./types";
+import type { CalendarEvent, CareAvailability, ListItem, Member } from "./types";
 
 // What the other parent hears about a change (docs/notifications.md):
 // only what concerns them, now; nothing about what they did themselves.
@@ -15,15 +15,16 @@ import type { CalendarEvent, ListItem, Member } from "./types";
 
 type EventRow = CalendarEvent & { family_id: string; updated_by?: string | null };
 type ItemRow = ListItem & { family_id: string };
+type Answer = CareAvailability & { family_id: string };
 type Activity = {
   id: number;
   family_id: string;
-  table_name: "events" | "list_items";
+  table_name: "events" | "list_items" | "care_availability";
   row_id: string;
   actor: string | null;
   via_app: boolean;
-  before: EventRow | ItemRow | null;
-  after: EventRow | ItemRow | null;
+  before: EventRow | ItemRow | Answer | null;
+  after: EventRow | ItemRow | Answer | null;
 };
 
 type Kind = "assigned" | "took_over" | "removed" | "going" | "cant" | "added_you" | "added_kid" | "added" | "moved" | "changed" | "place" | "cancelled" | "todo" | "todo_due";
@@ -72,7 +73,7 @@ export async function sendDueNotifications(db: SupabaseClient) {
       todoLists: new Set((lists ?? []).map((l) => l.id as string)),
     };
     for (const row of rows.filter((r) => r.family_id === familyId)) {
-      notes.push(...(row.table_name === "events" ? await eventNotes(ctx, row) : itemNotes(ctx, row)));
+      notes.push(...(row.table_name === "events" ? await eventNotes(ctx, row) : row.table_name === "care_availability" ? await answerNotes(ctx, row) : itemNotes(ctx, row)));
     }
   }
 
@@ -163,7 +164,7 @@ async function eventNotes(ctx: Ctx, row: Activity): Promise<Note[]> {
   const soon = (o: Occ, hours: number) => !!o && new Date(o.occurrence_start).getTime() < ctx.now.getTime() + hours * HOUR;
   const near = (o: Occ) => soon(o, 48);
   const isKid = (id: string | null | undefined) => ctx.members.some((m) => m.id === id && !m.profile_id);
-  // In the app, the Kids tab already says "I'm going" / "I can't" itself.
+  // In the app, backing out of a slot also answers "I can't", told by answerNotes.
   const appCare = !!ev.care && row.via_app;
   const url = ev.care ? "/kids/preschool" : "/calendar";
 
@@ -194,7 +195,7 @@ async function eventNotes(ctx: Ctx, row: Activity): Promise<Note[]> {
       if (!ox) continue;
       if (after.care) {
         if (after.responsible_member_id === r.id) say.assigned(after, ox);
-        else if (after.responsible_member_id === actor.id && !appCare) say.going(after, ox);
+        else if (after.responsible_member_id === actor.id) say.going(after, ox);
       } else if (after.responsible_member_id === r.id) say.assigned(after, ox);
       else if (after.for_member_id === r.id && soon(ox, 7 * 24)) note("added_you", t("{name} added something for you: {what}.", v(after, ox)), what(after, ox));
       else if (isKid(after.for_member_id)) {
@@ -223,7 +224,7 @@ async function eventNotes(ctx: Ctx, row: Activity): Promise<Note[]> {
     if (b.responsible_member_id !== x.responsible_member_id) {
       if (x.responsible_member_id === r.id) say.assigned(x, ox);
       else if (x.care && x.responsible_member_id === actor.id) {
-        if (!appCare) say.going(x, ox);
+        say.going(x, ox);
       } else if (x.care && b.responsible_member_id === actor.id) {
         if (!appCare) say.cant(x, ox);
       } else if (b.responsible_member_id === r.id && x.responsible_member_id === actor.id) {
@@ -283,6 +284,31 @@ function itemNotes(ctx: Ctx, row: Activity): Note[] {
     return note("todo_due", h.t("{name} moved the due date of {what}.", { name: actor.name, what }));
   }
   return [];
+}
+
+// "I can't" from the Kids tab, when nobody else is going.
+async function answerNotes(ctx: Ctx, row: Activity): Promise<Note[]> {
+  const before = row.before as Answer | null;
+  const answer = row.after as Answer | null;
+  if (!answer || answer.available || before?.available === false) return [];
+  const actor = ctx.members.find((m) => m.id === answer.member_id && m.profile_id);
+  const kid = ctx.members.find((m) => m.id === answer.kid_id && !m.profile_id);
+  if (!actor || !kid) return [];
+
+  const from = new Date(`${answer.day}T00:00:00`);
+  const { data } = await ctx.db.from("events").select("*").eq("family_id", answer.family_id).eq("for_member_id", kid.id).eq("care", answer.kind);
+  const slot = expand((data ?? []) as EventRow[], from, addDays(from, 1)).find((o) => dayKey(o.occurrence_start) === answer.day);
+  if (slot?.responsible_member_id && slot.responsible_member_id !== actor.id) return [];
+  if (new Date(slot?.occurrence_start ?? `${answer.day}T${usualTime(kid, answer.kind)}:00`) < ctx.now) return [];
+
+  return ctx.members
+    .filter((r) => r.profile_id && r.id !== actor.id)
+    .map((r) => {
+      const h = helpers(ctx, r);
+      const start = slot?.occurrence_start ?? new Date(`${answer.day}T${usualTime(kid, answer.kind)}:00`).toISOString();
+      const what = `${answer.kind === "dropoff" ? h.t("{name}'s drop-off", { name: kid.name }) : h.t("{name}'s pick-up", { name: kid.name })} (${h.when(start, false)})`;
+      return { to: r.profile_id!, locale: h.locale, actor: actor.name, kind: "cant" as const, text: h.t("Heads up: {name} can't make it to {what}.", { name: actor.name, what }), line: what, url: "/kids/preschool" };
+    });
 }
 
 const fmtDay = (d: string, locale: Locale) =>
