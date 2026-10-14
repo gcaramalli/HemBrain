@@ -80,7 +80,7 @@ Rules of thumb:
 - `care_availability` — per kid/day/`kind`/parent: `available` true ("I can") or false ("I can't"), no row = hasn't said. The one who goes confirms ("I'm going") = the care event's `responsible_member_id` (`src/components/care-slot.tsx`)
 - `push_subscriptions` — one row per device with reminders on (own rows only)
 - `activity` — queue of changes to `events` / `list_items` (service role only), filled by triggers and sent to the other
-  parent by `/api/cron/notify` (pg_cron every minute) when they concern them; rules in `src/lib/partner-notify.ts`, grid in
+  parent by `/api/cron/notify` (pg_cron every minute) when they concern them, in Hem's voice (title "Hem", templated sentence); rules in `src/lib/partner-notify.ts`, grid in
   `docs/notifications.md`. `events.updated_by` = who last changed it: the connector must set it on every event write.
 - `lists` (`kind` grocery → Kitchen, todo → Calendar → To-do, and open to-dos with a `due_date` also show on their day in the calendar and on Today, late ones on today (`src/components/todo-row.tsx`); both rendered by `src/components/lists-view.tsx`) and `list_items` (`category` = aisle id from `src/lib/categories.ts`)
 - `purchases` — auto-filled by a trigger when a grocery item is checked off (skipped if the item was logged <10 min ago); `source` list/manual/receipt, `store`, `price`

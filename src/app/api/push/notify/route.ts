@@ -5,9 +5,8 @@ import { getSession } from "@/lib/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Member } from "@/lib/types";
 
-// "Guillaume gave you: Pick-up Charlie · Thu 16:00", sent to the other parent
-// when someone makes them responsible for something. From the Kids tab also
-// "Guillaume is going" and "Guillaume can't make it".
+// From the Kids tab: "Guillaume is going" / "Guillaume can't make it", told by
+// Hem to the other parent.
 export async function POST(req: Request) {
   if (!pushEnabled()) return Response.json({ sent: 0 });
   const session = await getSession();
@@ -30,7 +29,7 @@ export async function POST(req: Request) {
   const locale = isLocale(recipient?.locale) ? recipient.locale : "en";
   const t = translator(locale);
   const kid = (members as Member[]).find((m) => !m.profile_id && (title === careTitle("dropoff", m) || title === careTitle("pickup", m)));
-  const label = kid ? (title === careTitle("dropoff", kid) ? t("Drop-off {name}", { name: kid.name }) : t("Pick-up {name}", { name: kid.name })) : title;
+  const label = kid ? (title === careTitle("dropoff", kid) ? t("{name}'s drop-off", { name: kid.name }) : t("{name}'s pick-up", { name: kid.name })) : title;
   const when = new Date(starts_at).toLocaleString(BCP47[locale], {
     timeZone: "Europe/Stockholm",
     weekday: "short",
@@ -39,13 +38,14 @@ export async function POST(req: Request) {
     ...(all_day ? {} : { hour: "2-digit", minute: "2-digit" }),
   });
 
-  const name = from?.name ?? session.profile.display_name;
+  // Hem says it, like the other notifications between parents (src/lib/partner-notify.ts).
+  const v = { name: from?.name ?? session.profile.display_name, what: `${label} (${when})` };
   const sent = await sendPush(to.profile_id, {
-    title:
-      news === "going" ? t("{name} is going", { name })
-      : news === "cant" ? `⚠️ ${t("{name} can't make it", { name })}`
-      : t("{name} gave you something to do", { name }),
-    body: `${label} · ${when}`,
+    title: "Hem",
+    body:
+      news === "going" ? t("{name} is going: {what}.", v)
+      : news === "cant" ? t("Heads up: {name} can't make it to {what}.", v)
+      : t("{name} is counting on you for {what}.", v),
     url: kid ? "/kids/preschool" : "/calendar",
     tag: `${news === "going" || news === "cant" ? "care" : "assign"}-${member_id}-${starts_at}`,
   });

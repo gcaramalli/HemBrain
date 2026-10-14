@@ -9,6 +9,7 @@ import type { CalendarEvent, ListItem, Member } from "./types";
 
 // What the other parent hears about a change (docs/notifications.md):
 // only what concerns them, now; nothing about what they did themselves.
+// Hem says it: the push is titled "Hem" and written as Hem's sentence.
 // Rows come from `activity` (supabase/migrations/0029_partner_notifications.sql).
 // Callers pin process.env.TZ to Europe/Stockholm: day maths uses local time.
 
@@ -31,11 +32,10 @@ const ICON: Record<Kind, string> = {
   moved: "🕑", changed: "✏️", place: "📍", cancelled: "❌", todo: "👉", todo_due: "🕑",
 };
 
-type Note = { to: string; locale: Locale; actor: string; kind: Kind; title: string; body: string; url: string; urgent: boolean };
+// `text` = Hem's sentence when sent alone, `line` = the short line when grouped.
+type Note = { to: string; locale: Locale; actor: string; kind: Kind; text: string; line: string; url: string };
 
 const HOUR = 3600000;
-const QUIET_FROM = 21;
-const QUIET_UNTIL = 7;
 
 type Ctx = {
   db: SupabaseClient;
@@ -57,14 +57,8 @@ export async function sendDueNotifications(db: SupabaseClient) {
   if (error) throw new Error(error.message);
   const rows = (data ?? []) as Activity[];
 
-  const quiet = now.getHours() >= QUIET_FROM || now.getHours() < QUIET_UNTIL;
-  const morning = new Date(now);
-  if (now.getHours() >= QUIET_UNTIL) morning.setDate(morning.getDate() + 1);
-  morning.setHours(QUIET_UNTIL, 0, 0, 0);
-
   const notes: Note[] = [];
   for (const familyId of new Set(rows.map((r) => r.family_id))) {
-    const mine = rows.filter((r) => r.family_id === familyId);
     const [{ data: members }, { data: profiles }, { data: lists }] = await Promise.all([
       db.from("members").select("*").eq("family_id", familyId),
       db.from("profiles").select("id, locale").eq("family_id", familyId),
@@ -77,14 +71,8 @@ export async function sendDueNotifications(db: SupabaseClient) {
       locales: new Map((profiles ?? []).map((p) => [p.id as string, isLocale(p.locale) ? p.locale : "en"])),
       todoLists: new Set((lists ?? []).map((l) => l.id as string)),
     };
-    for (const row of mine) {
-      const found = row.table_name === "events" ? await eventNotes(ctx, row) : itemNotes(ctx, row);
-      // At night, only what happens in the next hours; the rest waits for the morning.
-      if (quiet && found.length && !found.some((n) => n.urgent)) {
-        const { error: deferError } = await db.from("activity").update({ sent_at: null, due_at: morning.toISOString() }).eq("id", row.id);
-        if (!deferError) continue; // a newer change to the same row is already queued: send this one now
-      }
-      notes.push(...found);
+    for (const row of rows.filter((r) => r.family_id === familyId)) {
+      notes.push(...(row.table_name === "events" ? await eventNotes(ctx, row) : itemNotes(ctx, row)));
     }
   }
 
@@ -96,8 +84,11 @@ export async function sendDueNotifications(db: SupabaseClient) {
     const [first] = group;
     const t = translator(first.locale);
     sent += await sendPush(first.to, {
-      title: group.length === 1 ? first.title : t("{name} made {count} changes", { name: first.actor, count: group.length }),
-      body: group.length === 1 ? first.body : group.slice(0, 5).map((n) => `${ICON[n.kind]} ${n.body}`).join("\n"),
+      title: "Hem",
+      body:
+        group.length === 1
+          ? first.text
+          : [t("{name} made {count} changes:", { name: first.actor, count: group.length }), ...group.slice(0, 5).map((n) => `${ICON[n.kind]} ${n.line}`)].join("\n"),
       url: group.every((n) => n.url === first.url) ? first.url : "/",
       tag: `partner-${first.to}-${now.getTime()}`,
     });
@@ -168,8 +159,9 @@ async function eventNotes(ctx: Ctx, row: Activity): Promise<Note[]> {
   const ev = (after ?? before)!;
   const ob = nextOcc(ctx, before);
   const ox = nextOcc(ctx, after);
-  const near = (o: { occurrence_start: string } | null) => !!o && new Date(o.occurrence_start).getTime() < ctx.now.getTime() + 48 * HOUR;
-  const soonAs = (o: { occurrence_start: string } | null, h: number) => !!o && new Date(o.occurrence_start).getTime() < ctx.now.getTime() + h * HOUR;
+  type Occ = { occurrence_start: string } | null;
+  const soon = (o: Occ, hours: number) => !!o && new Date(o.occurrence_start).getTime() < ctx.now.getTime() + hours * HOUR;
+  const near = (o: Occ) => soon(o, 48);
   const isKid = (id: string | null | undefined) => ctx.members.some((m) => m.id === id && !m.profile_id);
   // In the app, the Kids tab already says "I'm going" / "I can't" itself.
   const appCare = !!ev.care && row.via_app;
@@ -178,24 +170,37 @@ async function eventNotes(ctx: Ctx, row: Activity): Promise<Note[]> {
   const out: Note[] = [];
   for (const r of ctx.members.filter((m) => m.profile_id && m.id !== actor.id)) {
     const h = helpers(ctx, r);
+    const t = h.t;
     const concerns = (e: EventRow) => e.responsible_member_id === r.id || e.for_member_id === r.id || isKid(e.for_member_id) || (!e.responsible_member_id && !e.for_member_id);
-    const note = (kind: Kind, title: string, body: string, occ: { occurrence_start: string } | null) => {
-      out.push({ to: r.profile_id!, locale: h.locale, actor: actor.name, kind, title, body, url, urgent: soonAs(occ, 14) });
+    // "Pick-up Charlie (Thu 15 Oct, 16:00)"
+    // Mid-sentence, a drop-off / pick-up reads "Charlie's pick-up".
+    const lbl = (e: EventRow) => {
+      const k = h.kid(e.for_member_id);
+      if (!k || !e.care || e.title !== careTitle(e.care, k)) return h.label(e);
+      return e.care === "dropoff" ? t("{name}'s drop-off", { name: k.name }) : t("{name}'s pick-up", { name: k.name });
     };
-    const line = (e: EventRow, o: { occurrence_start: string } | null) => `${h.label(e)}${o ? ` · ${h.when(o.occurrence_start, e.all_day)}` : ""}`;
-    const name = { name: actor.name };
+    const what = (e: EventRow, o: Occ) => `${lbl(e)}${o ? ` (${h.when(o.occurrence_start, e.all_day)})` : ""}`;
+    const v = (e: EventRow, o: Occ) => ({ name: actor.name, what: what(e, o) });
+    const note = (kind: Kind, text: string, line: string) => out.push({ to: r.profile_id!, locale: h.locale, actor: actor.name, kind, text, line, url });
+    const say = {
+      assigned: (e: EventRow, o: Occ) => note("assigned", t("{name} is counting on you for {what}.", v(e, o)), what(e, o)),
+      going: (e: EventRow, o: Occ) => note("going", t("{name} is going: {what}.", v(e, o)), what(e, o)),
+      cant: (e: EventRow, o: Occ) => note("cant", t("Heads up: {name} can't make it to {what}.", v(e, o)), what(e, o)),
+      cancelled: (e: EventRow, o: Occ) => note("cancelled", t("Heads up: {name} cancelled {what}.", v(e, o)), what(e, o)),
+    };
 
     // Created.
     if (!before && after) {
       if (!ox) continue;
       if (after.care) {
-        if (after.responsible_member_id === r.id) note("assigned", h.t("{name} gave you something to do", name), line(after, ox), ox);
-        else if (after.responsible_member_id === actor.id && !appCare) note("going", h.t("{name} is going", name), line(after, ox), ox);
-      } else if (after.responsible_member_id === r.id) note("assigned", h.t("{name} gave you something to do", name), line(after, ox), ox);
-      else if (after.for_member_id === r.id && soonAs(ox, 7 * 24)) note("added_you", h.t("{name} added for you", name), line(after, ox), ox);
-      else if (isKid(after.for_member_id)) note("added_kid", h.t("{name} added for {kid}", { ...name, kid: h.kid(after.for_member_id)!.name }), line(after, ox), ox);
-      else if (!after.responsible_member_id && !after.for_member_id && dayKey(ox.occurrence_start) <= dayKey(addDays(ctx.now, 1))) {
-        note("added", h.t("{name} added to the calendar", name), line(after, ox), ox);
+        if (after.responsible_member_id === r.id) say.assigned(after, ox);
+        else if (after.responsible_member_id === actor.id && !appCare) say.going(after, ox);
+      } else if (after.responsible_member_id === r.id) say.assigned(after, ox);
+      else if (after.for_member_id === r.id && soon(ox, 7 * 24)) note("added_you", t("{name} added something for you: {what}.", v(after, ox)), what(after, ox));
+      else if (isKid(after.for_member_id)) {
+        note("added_kid", t("{name} added something for {kid}: {what}.", { ...v(after, ox), kid: h.kid(after.for_member_id)!.name }), what(after, ox));
+      } else if (!after.responsible_member_id && !after.for_member_id && dayKey(ox.occurrence_start) <= dayKey(addDays(ctx.now, 1))) {
+        note("added", t("{name} added to the calendar: {what}.", v(after, ox)), what(after, ox));
       }
       continue;
     }
@@ -204,9 +209,9 @@ async function eventNotes(ctx: Ctx, row: Activity): Promise<Note[]> {
     if (before && !after) {
       if (!ob) continue;
       if (before.care && before.responsible_member_id === actor.id) {
-        if (!appCare) note("cant", `⚠️ ${h.t("{name} can't make it", name)}`, line(before, ob), ob);
+        if (!appCare) say.cant(before, ob);
       } else if (before.responsible_member_id === r.id || before.for_member_id === r.id || (isKid(before.for_member_id) && !before.care) || (concerns(before) && near(ob))) {
-        note("cancelled", `❌ ${h.t("{name} cancelled", name)}`, line(before, ob), ob);
+        say.cancelled(before, ob);
       }
       continue;
     }
@@ -216,18 +221,15 @@ async function eventNotes(ctx: Ctx, row: Activity): Promise<Note[]> {
     const x = after!;
     if (!ob && !ox) continue; // in the past
     if (b.responsible_member_id !== x.responsible_member_id) {
-      if (x.responsible_member_id === r.id) note("assigned", h.t("{name} gave you something to do", name), line(x, ox), ox);
+      if (x.responsible_member_id === r.id) say.assigned(x, ox);
       else if (x.care && x.responsible_member_id === actor.id) {
-        if (!appCare) note("going", h.t("{name} is going", name), line(x, ox), ox);
+        if (!appCare) say.going(x, ox);
       } else if (x.care && b.responsible_member_id === actor.id) {
-        if (!appCare) note("cant", `⚠️ ${h.t("{name} can't make it", name)}`, line(x, ox), ox);
+        if (!appCare) say.cant(x, ox);
+      } else if (b.responsible_member_id === r.id && x.responsible_member_id === actor.id) {
+        note("took_over", t("Good news: {name} is taking {what} off your hands.", v(x, ox ?? ob)), what(x, ox ?? ob));
       } else if (b.responsible_member_id === r.id) {
-        note(
-          x.responsible_member_id === actor.id ? "took_over" : "removed",
-          x.responsible_member_id === actor.id ? h.t("{name} is taking over", name) : h.t("{name} took you off this", name),
-          line(x, ox ?? ob),
-          ox ?? ob,
-        );
+        note("removed", t("{name} took you off {what}.", v(x, ox ?? ob)), what(x, ox ?? ob));
       }
       continue;
     }
@@ -235,13 +237,15 @@ async function eventNotes(ctx: Ctx, row: Activity): Promise<Note[]> {
     const relevant = x.responsible_member_id === r.id || (concerns(x) && (near(ob) || near(ox)));
     const moved = ob?.occurrence_start !== ox?.occurrence_start || ob?.occurrence_end !== ox?.occurrence_end || b.all_day !== x.all_day;
     if (relevant && moved && ob && ox) {
-      note("moved", `🕑 ${h.t("{name} moved", name)}`, `${h.label(x)} · ${h.when(ob.occurrence_start, b.all_day)} → ${h.when(ox.occurrence_start, x.all_day)}`, near(ob) ? ob : ox);
+      const from = h.when(ob.occurrence_start, b.all_day);
+      const to = h.when(ox.occurrence_start, x.all_day);
+      note("moved", t("{name} moved {what}: {from} → {to}.", { name: actor.name, what: lbl(x), from, to }), `${lbl(x)} · ${from} → ${to}`);
     } else if (relevant && moved && ob && !ox) {
-      note("cancelled", `❌ ${h.t("{name} cancelled", name)}`, line(b, ob), ob);
+      say.cancelled(b, ob);
     } else if (relevant && (moved || b.recurrence !== x.recurrence || b.recurrence_until !== x.recurrence_until)) {
-      note("changed", h.t("{name} changed", name), line(x, ox), ox);
+      note("changed", t("{name} changed {what}.", v(x, ox)), what(x, ox));
     } else if (relevant && (b.location ?? "") !== (x.location ?? "") && x.location) {
-      note("place", h.t("{name} changed the place", name), `${h.label(x)} · ${x.location}`, ox);
+      note("place", t("{name} changed where {what} happens: {place}.", { ...v(x, ox), place: x.location }), `${lbl(x)} · ${x.location}`);
     }
 
     // Dates taken out of a series. A one-off put in their place is told on its own.
@@ -250,9 +254,9 @@ async function eventNotes(ctx: Ctx, row: Activity): Promise<Note[]> {
       const occ = occOn(x, day);
       if (!occ || (await hasReplacement(ctx, x, day))) continue;
       if (x.care && x.responsible_member_id === actor.id) {
-        if (!appCare) note("cant", `⚠️ ${h.t("{name} can't make it", name)}`, line(x, occ), occ);
+        if (!appCare) say.cant(x, occ);
       } else if (x.responsible_member_id === r.id || (concerns(x) && near(occ))) {
-        note("cancelled", `❌ ${h.t("{name} cancelled", name)}`, line(x, occ), occ);
+        say.cancelled(x, occ);
       }
     }
   }
@@ -270,18 +274,15 @@ function itemNotes(ctx: Ctx, row: Activity): Note[] {
   const h = helpers(ctx, r);
   const today = dayKey(ctx.now);
   const tomorrow = dayKey(addDays(startOfDay(ctx.now), 1));
-  const due = (d: string) =>
-    d < today ? `⚠️ ${fmtDay(d, h.locale)}` : d === today ? h.t("Today") : d === tomorrow ? h.t("Tomorrow") : fmtDay(d, h.locale);
-  const body = `${item.title}${item.due_date ? ` · ${due(item.due_date)}` : ""}`;
-  const urgent = !!item.due_date && item.due_date <= today;
+  const due = (d: string) => (d === today ? h.t("today") : d === tomorrow ? h.t("tomorrow") : fmtDay(d, h.locale));
+  const what = `${item.title}${item.due_date ? ` (${due(item.due_date)})` : ""}`;
+  const note = (kind: Kind, text: string): Note[] => [{ to: r.profile_id!, locale: h.locale, actor: actor.name, kind, text, line: what, url: "/todo" }];
 
-  let n: Note | null = null;
-  if (before?.assignee_member_id !== r.id) {
-    n = { to: r.profile_id, locale: h.locale, actor: actor.name, kind: "todo", title: h.t("{name} gave you a to-do", { name: actor.name }), body, url: "/todo", urgent };
-  } else if (item.due_date && item.due_date !== before.due_date && item.due_date <= tomorrow) {
-    n = { to: r.profile_id, locale: h.locale, actor: actor.name, kind: "todo_due", title: h.t("{name} changed the due date", { name: actor.name }), body, url: "/todo", urgent };
+  if (before?.assignee_member_id !== r.id) return note("todo", h.t("{name} is counting on you for a to-do: {what}.", { name: actor.name, what }));
+  if (item.due_date && item.due_date !== before.due_date && item.due_date <= tomorrow) {
+    return note("todo_due", h.t("{name} moved the due date of {what}.", { name: actor.name, what }));
   }
-  return n ? [n] : [];
+  return [];
 }
 
 const fmtDay = (d: string, locale: Locale) =>

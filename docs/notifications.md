@@ -18,7 +18,7 @@ phase 2 (an evening "what changed" summary) is not.
 | 7 | only edits the title or notes | | | ✅ |
 | **Kids** |||||
 | 8 | adds an event for a kid (doctor, BVC, preschool closed) | ✅ always | | |
-| 9 | "I'm going" / "I can't" on a drop-off or pick-up | ✅ (Kids tab, client side) | | |
+| 9 | "I'm going" / "I can't" on a drop-off or pick-up | ✅ (Kids tab, `/api/push/notify`, also in Hem's voice) | | |
 | 10 | moves a drop-off / pick-up in the next 48 h | ✅ | | |
 | 11 | changes the kid's usual times or days | | ✅ | |
 | 12 | logs sleep, meals, clothes | | | ✅ |
@@ -34,8 +34,10 @@ phase 2 (an evening "what changed" summary) is not.
 family (nobody responsible, for nobody). Never about what you did yourself, including
 through Hem.
 
-Night (21:00–07:00 Stockholm): only what starts in the next 14 hours is sent; the rest
-waits until 07:00. Several changes by the same person at once become one push listing them.
+Hem says it: every push is titled "Hem" and reads as Hem's sentence ("Jenny is counting on
+you for Charlie's pick-up (Thu 15 Oct, 16:00)."). Written from templates, not by the model:
+free, instant, and it never fails silently. No quiet hours: the phone's own focus / silent
+mode decides. Several changes by the same person at once become one push listing them.
 
 ## How it works
 
