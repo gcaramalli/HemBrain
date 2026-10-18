@@ -5,6 +5,7 @@
 // Each fits in about 1.1 × 1.1 units around its origin, stands on y = 0, and
 // moves a little on its own (`update(time)`).
 import * as THREE from "three";
+import { PALETTE, person, type Kit } from "./three-kit";
 
 export type ActKind =
   | "meal" | "drinks" | "swim" | "racket" | "sport" | "health" | "party" | "family" | "travel" | "show"
@@ -39,41 +40,9 @@ export function actKind(title: string, badge?: string, multiDay = false): ActKin
   return multiDay && ["unknown", "lesson", "work", "outing"].includes(kind) ? "travel" : kind;
 }
 
-export type Kit = {
-  mat: (color: string, emissive?: string) => THREE.MeshStandardMaterial;
-  box: (w: number, h: number, d: number, r?: number) => THREE.BufferGeometry;
-  sphere: THREE.BufferGeometry;
-  mesh: (g: THREE.BufferGeometry, color: string, x?: number, y?: number, z?: number, emissive?: string) => THREE.Mesh;
-};
 export type Vignette = { group: THREE.Group; update: (time: number) => void };
 
-const C = {
-  white: "#ffffff",
-  wood: "#c79a6b",
-  blue: "#2c55d4",
-  sky: "#5b9cf5",
-  teal: "#14a3a0",
-  green: "#36a96b",
-  grass: "#7cc98f",
-  orange: "#ff7a1a",
-  dark: "#2a3140",
-  glass: "#dfeaff",
-  guest: "#c9ced8",
-  ball: "#e9ef5a",
-};
-
-// A seated or standing person in someone's colour.
-function person(kit: Kit, color: string, x: number, z: number, seated = false) {
-  const g = new THREE.Group();
-  g.position.set(x, 0, z);
-  const h = seated ? 0.24 : 0.32;
-  g.add(kit.mesh(kit.box(0.2, h, 0.16, 0.07), color, 0, h / 2 + (seated ? 0.12 : 0), 0));
-  const head = kit.mesh(kit.sphere, "#f3dcc6", 0, h + 0.1 + (seated ? 0.12 : 0), 0);
-  head.scale.setScalar(0.09);
-  g.add(head);
-  if (seated) g.add(kit.mesh(kit.box(0.2, 0.12, 0.2, 0.04), C.wood, 0, 0.06, 0));
-  return g;
-}
+const C = { ...PALETTE, white: "#ffffff", ball: "#e9ef5a" };
 
 const face = (g: THREE.Object3D, x: number, z: number) => (g.rotation.y = Math.atan2(x - g.position.x, z - g.position.z));
 
