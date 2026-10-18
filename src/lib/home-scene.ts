@@ -6,7 +6,7 @@
 // lies in their bed with little bubbles rising; the chimney smokes once
 // dinner is logged.
 import * as THREE from "three";
-import { createStage, house as makeHouse, person, PALETTE, plate, tree } from "./three-kit";
+import { createStage, diorama, house as makeHouse, person, PALETTE, plate, tree } from "./three-kit";
 import type { Place } from "./home-now";
 
 export type HomeSceneData = {
@@ -28,7 +28,7 @@ const SPOTS: Record<Place, THREE.Vector3> = {
 
 export function createHomeScene(el: HTMLElement, data: HomeSceneData) {
   const stage = createStage(el, { shadow: 8, fov: 28 });
-  const { camera, kit, pop, still, sun, hemi } = stage;
+  const { kit, pop, still, sun, hemi } = stage;
   const { box, mesh } = kit;
 
   if (data.night) {
@@ -136,12 +136,7 @@ export function createHomeScene(el: HTMLElement, data: HomeSceneData) {
     return { g, body, p, j, n };
   });
 
-  // Frame the plate in a wide card.
-  let fit = 20;
-  stage.onResize(() => {
-    const tanV = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-    fit = Math.max((R + 0.6) / (tanV * camera.aspect), (R * 0.88) / tanV);
-  });
+  diorama(stage, { radius: R, height: 2.4, el: 44, az: 0.3 });
 
   // Labels: each person's name, above their head.
   const head = new THREE.Vector3();
@@ -152,11 +147,7 @@ export function createHomeScene(el: HTMLElement, data: HomeSceneData) {
       return stage.project(g.localToWorld(head.clone()));
     });
 
-  stage.onTick((time, _dt, t) => {
-    const az = still ? 0.35 : 0.35 + 0.18 * Math.sin(t * 0.25);
-    const el2 = THREE.MathUtils.degToRad(40);
-    camera.position.set(Math.sin(az) * Math.cos(el2) * fit, Math.sin(el2) * fit, Math.cos(az) * Math.cos(el2) * fit);
-    camera.lookAt(0, 0.2, 0.5);
+  stage.onTick((time) => {
     home.puff(time, data.smoke && !still);
     if (still) return;
     park.forEach((p, i) => (p.rotation.z = 0.035 * Math.sin(time * 1.3 + i)));

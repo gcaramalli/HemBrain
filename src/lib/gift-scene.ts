@@ -3,18 +3,19 @@
 // walls fold open and confetti bursts out (the gift's emoji appears above,
 // in HTML). `state.opened` is read every frame, so the same scene plays the opening.
 import * as THREE from "three";
-import { createStage, PALETTE, smooth, clamp01 } from "./three-kit";
+import { clamp01, createStage, diorama, PALETTE, plate, smooth } from "./three-kit";
 
 export function createGiftScene(el: HTMLElement, color: string, state: { opened: boolean }) {
   const stage = createStage(el, { ao: false, shadow: 4, fov: 32 });
-  const { camera, kit, pop, still } = stage;
+  const { kit, pop, still } = stage;
   const { box, mesh, sphere } = kit;
   stage.sun.shadow.normalBias = 0.05; // no acne on the walls once they lie flat
-  camera.position.set(0, 2.3, 4.2);
-  camera.lookAt(0, 0.45, 0);
 
+  // On a small floating plate, like every scene.
+  pop(plate(kit, 1.25), 0);
   const gift = new THREE.Group();
-  pop(gift, 0);
+  gift.rotation.y = 0.5;
+  pop(gift, 0.05);
 
   // The floor of the box and four walls hinged at their bottom edge, so they can fold open.
   const S = 1;
@@ -67,7 +68,6 @@ export function createGiftScene(el: HTMLElement, color: string, state: { opened:
       // Wrapped: a little wiggle every couple of seconds, and a slow turn.
       const w = still ? 0 : Math.max(0, Math.sin(t * 3.2)) ** 8;
       gift.rotation.z = 0.12 * w * Math.sin(t * 30);
-      gift.rotation.y = still ? 0.5 : 0.5 + 0.25 * Math.sin(t * 0.7);
       gift.position.y = 0.05 * w;
       return;
     }
@@ -89,6 +89,6 @@ export function createGiftScene(el: HTMLElement, color: string, state: { opened:
       p.c.rotation.set(p.spin * c, p.spin * 0.7 * c, 0);
     }
   });
-  stage.onResize(() => camera.lookAt(0, 0.45, 0));
+  diorama(stage, { radius: 1.25, height: 1.3, el: 30 });
   return { dispose: stage.dispose };
 }

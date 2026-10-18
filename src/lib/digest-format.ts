@@ -22,14 +22,22 @@ export const pick = (x: Localized | null | undefined, locale: Locale) => (x?.[lo
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const inline = (s: string) => esc(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
 
-// Short paragraphs separated by a blank line, "- " bullets, **bold**. Nothing
-// else: the text comes from a draft, so everything is escaped.
-export function textToHtml(text: string): string {
+// A picture on its own line: `![what it shows](/digest/2026-10-18-week.jpg)`. Only
+// files the app itself serves from public/digest/, so a draft can't pull in
+// anything from elsewhere.
+const IMAGE = /^!\[([^\]]*)\]\((\/digest\/[\w.-]+\.(?:png|jpe?g|gif|webp))\)$/;
+
+// Short paragraphs separated by a blank line, "- " bullets, **bold**, and
+// pictures (see IMAGE). Nothing else: the text comes from a draft, so
+// everything is escaped. `base` = the app's address, for the pictures.
+export function textToHtml(text: string, base = ""): string {
   return text
     .trim()
     .split(/\n\s*\n/)
     .map((block) => {
       const lines = block.split("\n").map((l) => l.trim()).filter(Boolean);
+      const img = lines.length === 1 && IMAGE.exec(lines[0]);
+      if (img) return `<p style="margin:0 0 16px"><img src="${esc(base + img[2])}" alt="${esc(img[1])}" width="512" style="display:block;width:100%;max-width:512px;height:auto;border:0;border-radius:14px"></p>`;
       if (lines.length && lines.every((l) => l.startsWith("- "))) {
         return `<ul style="margin:0 0 16px;padding-left:20px">${lines.map((l) => `<li style="margin:0 0 8px">${inline(l.slice(2))}</li>`).join("")}</ul>`;
       }
@@ -39,7 +47,13 @@ export function textToHtml(text: string): string {
 }
 
 export function textToPlain(text: string): string {
-  return text.trim().replace(/\*\*(.+?)\*\*/g, "$1");
+  return text
+    .trim()
+    .split("\n")
+    .filter((l) => !IMAGE.test(l.trim())) // pictures don't exist in plain text
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/\*\*(.+?)\*\*/g, "$1");
 }
 
 export function digestEmail(d: Pick<Digest, "subject" | "body" | "nudge">, locale: Locale, opts: { inactive: boolean; appUrl: string; unsubscribeUrl: string }) {
@@ -57,8 +71,8 @@ export function digestEmail(d: Pick<Digest, "subject" | "body" | "nudge">, local
 <div style="background:#ffffff;border-radius:20px;padding:28px 24px;font-size:16px;line-height:1.5">
 <p style="margin:0 0 20px;font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#6b6b80">Hembrain</p>
 <h1 style="margin:0 0 20px;font-size:24px;line-height:1.25">${esc(subject)}</h1>
-${textToHtml(body)}
-${nudge ? `<div style="margin:8px 0 16px;padding:16px;border-radius:14px;background:#f1f0ff">${textToHtml(nudge)}</div>` : ""}
+${textToHtml(body, opts.appUrl)}
+${nudge ? `<div style="margin:8px 0 16px;padding:16px;border-radius:14px;background:#f1f0ff">${textToHtml(nudge, opts.appUrl)}</div>` : ""}
 <p style="margin:24px 0 0"><a href="${esc(opts.appUrl)}" style="display:inline-block;background:#1c1c28;color:#ffffff;text-decoration:none;font-weight:600;padding:12px 22px;border-radius:999px">${esc(open)}</a></p>
 </div>
 <p style="margin:16px 8px 0;font-size:12px;line-height:1.5;color:#6b6b80">${esc(footer)} <a href="${esc(opts.unsubscribeUrl)}" style="color:#6b6b80">${esc(stop)}</a></p>
@@ -69,4 +83,29 @@ ${nudge ? `<div style="margin:8px 0 16px;padding:16px;border-radius:14px;backgro
     .join("\n\n");
 
   return { subject, html, text };
+}
+
+// A whole draft pasted at once (Hembrain admin → News → New draft): one "# en" /
+// "# fr" / "# sv" section per language, each with "## subject", "## body" and
+// "## nudge" parts. Anything missing stays empty; English falls back where a
+// language has no text.
+export function parseDraft(text: string) {
+  const out = { subject: {} as Localized, body: {} as Localized, nudge: {} as Localized };
+  let lang: Locale | null = null;
+  let field: keyof typeof out | null = null;
+  const parts: Record<string, string[]> = {};
+  for (const line of text.split("\n")) {
+    const l = /^#\s+(en|fr|sv)\s*$/i.exec(line);
+    const f = /^##\s+(subject|body|nudge)\s*$/i.exec(line);
+    if (l) {
+      lang = l[1].toLowerCase() as Locale;
+      field = null;
+    } else if (f && lang) field = f[1].toLowerCase() as keyof typeof out;
+    else if (lang && field) (parts[`${lang}.${field}`] ??= []).push(line);
+  }
+  for (const [k, lines] of Object.entries(parts)) {
+    const [lg, fd] = k.split(".") as [Locale, keyof typeof out];
+    out[fd][lg] = lines.join("\n").trim();
+  }
+  return out;
 }

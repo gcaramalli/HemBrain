@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
 import { useFamily } from "@/components/family-context";
 import { useKid } from "@/components/kid-context";
@@ -12,6 +13,9 @@ import { ageInMonths, dayKey, fmtDate } from "@/lib/dates";
 import type { KidClothes } from "@/lib/types";
 import { CLOTHES_CATEGORIES, CLOTHES_STATUSES, missingEssentials, probablyTooSmall } from "@/lib/wardrobe";
 
+
+// The wardrobe plate in 3D; three.js loads after the page.
+const Wardrobe3D = dynamic(() => import("@/components/kid-3d").then((m) => m.Wardrobe3D), { ssr: false });
 type Draft = Pick<KidClothes, "title" | "category" | "size" | "status" | "notes"> & { id?: string };
 
 // The kid's sizes, what's in the drawer, what to buy, and the season's
@@ -24,6 +28,7 @@ export default function WardrobePage() {
   const [editing, setEditing] = useState<Draft | null>(null);
   const [sizes, setSizes] = useState(false);
   const [showOutgrown, setShowOutgrown] = useState(false);
+  const [flat, setFlat] = useState(false);
   const kidId = kid?.id;
 
   const load = useCallback(async () => {
@@ -67,6 +72,23 @@ export default function WardrobePage() {
 
       <PageHem topic="wardrobe" kid={kid} />
 
+      {/* One plot per category in use: folded clothes, a ghost for what to buy, a box for what's too small. */}
+      {!flat && clothes.length > 0 && (() => {
+        const cats = CLOTHES_CATEGORIES.filter((c) => clothes.some((x) => x.category === c.id));
+        const count = (id: string, status: string) => clothes.filter((x) => x.category === id && x.status === status).length;
+        return (
+          <div className="card relative aspect-[4/3] overflow-hidden p-0">
+            <Wardrobe3D
+              rails={cats.map((c) => ({ have: count(c.id, "have"), need: count(c.id, "need"), outgrown: count(c.id, "outgrown") }))}
+              names={cats.map((c) => `${c.emoji} ${t(c.label).split(",")[0]}`)}
+              color={kid.color}
+              onPick={(i) => (document.getElementById(`wardrobe-${cats[i].id}`) ?? document.getElementById("wardrobe-need"))?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              onFail={() => setFlat(true)}
+            />
+          </div>
+        );
+      })()}
+
       <button className="card grid grid-cols-2 gap-2 text-left" onClick={() => setSizes(true)}>
         <span>
           <span className="block text-xs text-muted">{t("Clothing size")}</span>
@@ -81,7 +103,7 @@ export default function WardrobePage() {
         </span>
       </button>
 
-      <section className="flex flex-col gap-1">
+      <section id="wardrobe-need" className="flex scroll-mt-20 flex-col gap-1">
         <h2 className="h2">{t("To buy")}</h2>
         <ul className="divide-y divide-border">
           {need.map((c) => (
@@ -123,7 +145,7 @@ export default function WardrobePage() {
           const list = have.filter((c) => c.category === cat.id);
           if (!list.length) return null;
           return (
-            <div key={cat.id}>
+            <div key={cat.id} id={`wardrobe-${cat.id}`} className="scroll-mt-20">
               <h3 className="border-b border-border pb-1 text-sm font-semibold">{cat.emoji} {t(cat.label)}</h3>
               <ul className="divide-y divide-border">
                 {list.map((c) => {

@@ -7,6 +7,7 @@ import { ConfirmButton } from "@/components/confirm-button";
 import { useFamily } from "@/components/family-context";
 import { PageHeader } from "@/components/page-header";
 import { PageHem } from "@/components/page-hem";
+import dynamic from "next/dynamic";
 import { PinGate, usePin } from "@/components/pin-lock";
 import { shrink } from "@/components/receipt-scan";
 import { Sheet } from "@/components/sheet";
@@ -20,6 +21,9 @@ import type { Paper } from "@/lib/types";
 // my code when I have one. What matters is the dates (last day to cancel,
 // expiry) and the terms Claude can compare later, not the PDF itself.
 
+
+// The papers plate in 3D; three.js loads after the page.
+const Papers3D = dynamic(() => import("@/components/papers-3d"), { ssr: false });
 type Scope = "family" | "mine";
 type Draft = {
   id?: string;
@@ -99,6 +103,7 @@ export default function PapersPage() {
   const [editing, setEditing] = useState<Draft | null>(null);
   const [adding, setAdding] = useState(false);
   const [showEnded, setShowEnded] = useState(false);
+  const [flat, setFlat] = useState(false); // no WebGL: no plate
 
   const load = useCallback(async () => {
     const { data } = await supabase.from("papers").select("*").order("title");
@@ -116,8 +121,21 @@ export default function PapersPage() {
   const soon = upcomingDeadlines(active, 60);
   const perYear = active.reduce((sum, p) => sum + (p.currency === "SEK" ? yearlyCost(p) ?? 0 : 0), 0);
 
+  // The plate: one plot per category in use, in the list's order.
+  const cats = PAPER_CATEGORIES.filter((c) => active.some((p) => p.category === c.id));
+  const dueIds = new Set(upcomingDeadlines(active, 30).map((d) => d.paper.id));
   const list = (
     <>
+      {cats.length > 0 && !flat && (
+        <div className="card relative -mb-1 aspect-[4/3] overflow-hidden p-0">
+          <Papers3D
+            shelves={cats.map((c) => ({ count: active.filter((p) => p.category === c.id).length, due: active.some((p) => p.category === c.id && dueIds.has(p.id)) }))}
+            names={cats.map((c) => t(c.label))}
+            onPick={(i) => document.getElementById(`papers-${cats[i].id}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            onFail={() => setFlat(true)}
+          />
+        </div>
+      )}
       {soon.length > 0 && (
         <section className="card flex flex-col gap-1">
           <h2 className="font-semibold">{t("Coming up")}</h2>
@@ -134,7 +152,7 @@ export default function PapersPage() {
         const rows = active.filter((p) => p.category === c.id);
         if (!rows.length) return null;
         return (
-          <section key={c.id}>
+          <section key={c.id} id={`papers-${c.id}`} className="scroll-mt-20">
             <h2 className="eyebrow mb-1">{t(c.label)}</h2>
             <ul className="grid gap-2">
               {rows.map((p) => (
