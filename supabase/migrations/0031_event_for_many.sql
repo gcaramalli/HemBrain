@@ -4,7 +4,10 @@
 -- keeps the two in step whichever one a writer sets.
 
 alter table public.events add column for_member_ids uuid[] not null default '{}';
+-- Backfill quietly: not a change anyone made, so nothing for the partner notifications.
+alter table public.events disable trigger events_activity;
 update public.events set for_member_ids = array[for_member_id] where for_member_id is not null;
+alter table public.events enable trigger events_activity;
 
 create or replace function private.events_for_many()
 returns trigger
