@@ -913,6 +913,7 @@ export const sv: Record<string, string> = {
   "Each person has their colour; ink = we've both been there.": "Var och en har sin färg; bläck = vi har båda varit där.",
   "{n} countries": "{n} länder",
   "Paste the list of countries you've been to, in any language.": "Klistra in listan över länder du har besökt, på valfritt språk.",
+  "Globe": "Glob",
   "World": "Världen",
   "Europe": "Europa",
   "Americas": "Amerika",

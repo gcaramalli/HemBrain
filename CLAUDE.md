@@ -114,7 +114,7 @@ Rules of thumb:
 - `visited_countries` — Travels: one row per member and country (ISO alpha-2, `first_year`, `note`), names translated with
   `Intl.DisplayNames` and pasted lists in any language matched by `parseCountries` (`src/lib/countries.ts`). Map outlines are
   pre-projected in `src/lib/world-map.json` (built by `scripts/gen-world-map.mjs`, no map library), drawn by `WorldMap`:
-  each person's colour, ink (`--foreground`, white in dark mode) where both parents went, a kid with a parent keeps the parent's colour. Tile on Home, page `/travels`; connector `get_travels` / `add_countries`.
+  each person's colour, ink (`--foreground`, white in dark mode) where both parents went, a kid with a parent keeps the parent's colour. Tile on Home, page `/travels`, where the same colours go on a 3D globe by default (`Globe`, `src/components/globe.tsx`, three.js loaded with `next/dynamic` on that page only; outlines in `src/lib/world-globe.json` from `scripts/gen-world-globe.mjs`; arcs from home = the open `lived` trip to each trip; Globe / Map switch kept in localStorage); connector `get_travels` / `add_countries`.
 - `trips` — Travels timeline (`/travels/timeline`, from Travels, filtered on me by default but family-visible):
   `country`, `start_month` / `end_month` (first of the month; no start = year unknown), `lived`, `note`, `member_ids` (who went).
   A trigger (`private.trip_ticks_country`) ticks the country in `visited_countries` for everyone who went and keeps
