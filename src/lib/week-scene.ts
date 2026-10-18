@@ -14,6 +14,7 @@ import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { buildVignette, type ActKind, type Vignette } from "./week-vignettes";
 
 export type SceneDay = {
+  today: boolean;
   weekend: boolean;
   acts: { kind: ActKind; colors: string[] }[]; // the day's main activities, at most 3 shown
   needs: number; // drop-offs / pick-ups nobody has taken
@@ -52,13 +53,13 @@ const easeOutBack = (x: number) => {
 const smooth = (x: number) => x * x * (3 - 2 * x);
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 
-export function createWeekScene(el: HTMLElement, days: SceneDay[], onPick: (day: number) => void): WeekScene {
+export function createWeekScene(el: HTMLElement, days: SceneDay[], onPick: (day: number) => void, inline = false): WeekScene {
   const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   const dpr = Math.min(window.devicePixelRatio, 2);
   renderer.setPixelRatio(dpr);
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap; // soft through shadow.radius (PCFSoft is gone in r18x)
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
   renderer.domElement.style.display = "block";
@@ -206,9 +207,9 @@ export function createWeekScene(el: HTMLElement, days: SceneDay[], onPick: (day:
   days.forEach((d, i) => {
     const g = new THREE.Group();
     g.position.copy(tilePos(i));
-    if (i === 0) g.add(mesh(box(TILE + 0.3, 0.16, TILE + 0.3, 0.16), PALETTE.orange, 0, 0.08, 0));
-    g.add(mesh(box(TILE, 0.26, TILE, 0.14), d.weekend ? PALETTE.weekend : PALETTE.tile, 0, 0.16 + (i === 0 ? 0.04 : 0), 0));
-    const top = 0.29 + (i === 0 ? 0.04 : 0);
+    if (d.today) g.add(mesh(box(TILE + 0.3, 0.16, TILE + 0.3, 0.16), PALETTE.orange, 0, 0.08, 0));
+    g.add(mesh(box(TILE, 0.26, TILE, 0.14), d.weekend ? PALETTE.weekend : PALETTE.tile, 0, 0.16 + (d.today ? 0.04 : 0), 0));
+    const top = 0.29 + (d.today ? 0.04 : 0);
     // The day's activities as little scenes; bigger when there are fewer.
     const acts = d.acts.slice(0, 3);
     const layout = [[[0, 0]], [[-0.95, 0.1], [0.95, -0.1]], [[-0.95, -0.7], [0.95, -0.7], [0, 0.8]]][acts.length - 1] ?? [];
@@ -271,7 +272,7 @@ export function createWeekScene(el: HTMLElement, days: SceneDay[], onPick: (day:
     camera.updateProjectionMatrix();
     // Wide enough for the plate, and short enough to leave room for the cards above and below.
     const tanV = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-    fit = Math.max((SLAB_R + 0.3) / (tanV * camera.aspect), 12 / tanV);
+    fit = Math.max((SLAB_R + 0.3) / (tanV * camera.aspect), (inline ? 8.6 : 12) / tanV);
   };
   const ro = new ResizeObserver(resize);
   ro.observe(el);
@@ -284,6 +285,11 @@ export function createWeekScene(el: HTMLElement, days: SceneDay[], onPick: (day:
       return { x: (label.x + 1) / 2, y: (1 - label.y) / 2, visible: label.z < 1 };
     });
 
+  // Only draw while it is on screen (inline, the calendar scrolls it away).
+  let visible = true;
+  const io = new IntersectionObserver(([e]) => (visible = e.isIntersecting));
+  io.observe(el);
+
   const start = performance.now();
   let last = start;
   let focused: number | null = null;
@@ -292,7 +298,7 @@ export function createWeekScene(el: HTMLElement, days: SceneDay[], onPick: (day:
   let frame = 0;
   const tick = (now: number) => {
     frame = requestAnimationFrame(tick);
-    if (document.hidden) return;
+    if (document.hidden || !visible) return;
     const time = (now - start) / 1000;
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
@@ -312,7 +318,7 @@ export function createWeekScene(el: HTMLElement, days: SceneDay[], onPick: (day:
     // Zoom: ease towards the tapped day, and back out.
     zoom += ((focused === null ? 0 : 1) - zoom) * (1 - Math.exp(-dt * 3.5));
     if (focused !== null) aim.copy(tilePos(focused));
-    const look = new THREE.Vector3(0, -0.2, -0.3).lerp(aim, smooth(zoom));
+    const look = new THREE.Vector3(0, -0.2, inline ? 0.9 : -0.3).lerp(aim, smooth(zoom));
     const dist = fit * (1.02 - 0.05 * (0.5 - 0.5 * Math.cos(phase)) + 0.25 * intro) * (1 - 0.66 * smooth(zoom));
     const el2 = THREE.MathUtils.degToRad(50 + 10 * intro - 6 * zoom);
     camera.position.set(look.x + Math.sin(az) * Math.cos(el2) * dist, look.y + Math.sin(el2) * dist, look.z + Math.cos(az) * Math.cos(el2) * dist);
@@ -346,6 +352,7 @@ export function createWeekScene(el: HTMLElement, days: SceneDay[], onPick: (day:
     dispose() {
       cancelAnimationFrame(frame);
       ro.disconnect();
+      io.disconnect();
       el.removeEventListener("pointerdown", down);
       el.removeEventListener("pointerup", up);
       world.traverse((o) => (o as THREE.Mesh).geometry?.dispose());

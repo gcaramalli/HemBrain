@@ -2,9 +2,9 @@
 
 import { CalendarSegments, PageHeader } from "@/components/page-header";
 import { PageHem } from "@/components/page-hem";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { Box } from "lucide-react";
+import { CalendarDays, CalendarRange, Maximize2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useFamily } from "@/components/family-context";
 import { EventForm, newEventDraft } from "@/components/event-form";
@@ -17,12 +17,15 @@ import { MODULES } from "@/lib/modules";
 import { careKind } from "@/lib/care";
 import type { EventOccurrence, ListItem, Member } from "@/lib/types";
 import { fetchDueTodos, TodoRow, todoDay } from "@/components/todo-row";
+import { buildWeek } from "@/lib/week-days";
 
-// three.js only loads when the 3D week is opened.
+// The week opens on its 3D view; three.js loads with it, after the page.
+const Stage = dynamic(() => import("@/components/week-diorama").then((m) => m.Stage), { ssr: false });
 const WeekDiorama = dynamic(() => import("@/components/week-diorama").then((m) => m.WeekDiorama), { ssr: false });
 
-type Mode = "month" | "week" | "agenda";
-const AGENDA_DAYS = 14;
+// Two ways to look: the next seven days (3D on top, the list to read and edit
+// below), and the month, a tap away for planning further ahead.
+type Mode = "month" | "week";
 const MONTH_CELLS = 42; // 6 weeks, like Apple Calendar
 
 function startOfWeek(d: Date) {
@@ -67,7 +70,7 @@ function Initials({ events, max }: { events: EventOccurrence[]; max: number }) {
 }
 
 export default function CalendarPage() {
-  const { supabase, members, me, t } = useFamily();
+  const { supabase, members, kids, me, t } = useFamily();
   const router = useRouter();
   const [who, setWho] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("week");
@@ -77,10 +80,12 @@ export default function CalendarPage() {
   const [allTodos, setTodos] = useState<ListItem[]>([]);
   const [editing, setEditing] = useState<Parameters<typeof EventForm>[0]["initial"] | null>(null);
   const [diorama, setDiorama] = useState(false);
+  const [flat, setFlat] = useState(false); // no WebGL: the week shows initials instead of the 3D
+  const scrollTo = useRef<string | null>(null);
 
   // Week = the next seven days from the chosen day (today by default), not Monday to Sunday.
   const from = mode === "month" ? startOfMonthGrid(anchor) : startOfDay(anchor);
-  const span = mode === "month" ? MONTH_CELLS : mode === "week" ? 7 : AGENDA_DAYS;
+  const span = mode === "month" ? MONTH_CELLS : 7;
   const fromKey = dayKey(from);
 
   const load = useCallback(async () => {
@@ -128,10 +133,24 @@ export default function CalendarPage() {
     return map;
   }, [allTodos, who]);
 
-  // Coming from the month view: bring the tapped day into view.
+  // The 3D week: same days and filter, with drop-offs / pick-ups kept to spot the untaken ones.
+  const week = useMemo(
+    () =>
+      buildWeek(
+        days,
+        allEvents.filter((e) => !who || e.badge || e.responsible_member_id === who || e.for_member_id === who || careKind(e) !== null),
+        allTodos.filter((i) => !who || i.assignee_member_id === who),
+        kids,
+      ),
+    [days, allEvents, allTodos, who, kids],
+  );
+
+  // Coming from the month view: bring the tapped day into view (not when tapping it in the 3D).
   useEffect(() => {
-    if (mode === "week" && focus) document.getElementById(`day-${focus}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [mode, focus, events]);
+    if (mode !== "week" || !scrollTo.current) return;
+    document.getElementById(`day-${scrollTo.current}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    scrollTo.current = null;
+  }, [mode, events]);
 
   const todayKey = dayKey(new Date());
   const shift = (n: number) => {
@@ -139,6 +158,7 @@ export default function CalendarPage() {
     setAnchor(mode === "month" ? new Date(anchor.getFullYear(), anchor.getMonth() + n, 1) : addDays(anchor, n * span));
   };
   const openWeek = (d: Date) => {
+    scrollTo.current = dayKey(d);
     setAnchor(d);
     setFocus(dayKey(d));
     setMode("week");
@@ -164,30 +184,21 @@ export default function CalendarPage() {
 
       <PageHem topic="week" />
 
-      {/* How to look at it: chips, lighter than the section switch above. */}
-      <div className="flex gap-2">
-        {(["month", "week", "agenda"] as Mode[]).map((m) => (
-          <button
-            key={m}
-            onClick={() => {
-              setFocus(null);
-              setMode(m);
-            }}
-            className={`chip-toggle ${mode === m ? "chip-on" : ""}`}
-          >
-            {m === "month" ? t("Month") : m === "week" ? t("Week") : t("Agenda")}
-          </button>
-        ))}
-        <button onClick={() => setDiorama(true)} className="chip-toggle ml-auto" aria-label={t("3D week")}>
-          <Box size={14} />
-          3D
-        </button>
-      </div>
-
       <div className="flex items-center justify-between gap-2">
         <button className="btn-ghost w-11 shrink-0" onClick={() => shift(-1)} aria-label={t("Previous")}>←</button>
         <div className="min-w-0 text-center">
-          <div className="truncate font-semibold first-letter:uppercase">{periodLabel}</div>
+          {/* Tap the period to switch between the week and the month (planning further ahead). */}
+          <button
+            className="mx-auto flex max-w-full items-center gap-1.5 font-semibold"
+            onClick={() => {
+              setFocus(null);
+              setMode(mode === "month" ? "week" : "month");
+            }}
+            aria-label={mode === "month" ? t("Week") : t("Month")}
+          >
+            <span className="truncate first-letter:uppercase">{periodLabel}</span>
+            {mode === "month" ? <CalendarRange size={16} className="shrink-0 text-muted" /> : <CalendarDays size={16} className="shrink-0 text-muted" />}
+          </button>
           <button
             className="text-xs text-muted underline underline-offset-2"
             onClick={() => {
@@ -249,7 +260,18 @@ export default function CalendarPage() {
         </section>
       )}
 
-      {mode === "week" && (
+      {mode === "week" && !flat && (
+        <section className="card relative overflow-hidden p-0">
+          <div className="relative aspect-square max-h-[26rem] w-full">
+            <Stage inline week={week} members={members} onPick={(i) => setFocus(week[i].key)} onFail={() => setFlat(true)} />
+          </div>
+          <button onClick={() => setDiorama(true)} aria-label={t("Full screen")} className="glass absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full">
+            <Maximize2 size={16} />
+          </button>
+        </section>
+      )}
+
+      {mode === "week" && flat && (
         <section className="card p-3">
           <div className="mb-2 text-sm text-muted first-letter:uppercase">{t("Who has something")}</div>
           <div className="grid grid-cols-7 gap-1 text-center">
@@ -311,7 +333,7 @@ export default function CalendarPage() {
         </div>
       )}
 
-      {diorama && <WeekDiorama onClose={() => setDiorama(false)} />}
+      {diorama && <WeekDiorama week={week} onClose={() => setDiorama(false)} />}
 
       <Sheet open={!!editing} onClose={() => setEditing(null)} title={editing?.id ? t("Edit event") : t("New event")}>
         {editing && (
