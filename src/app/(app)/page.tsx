@@ -18,7 +18,11 @@ import { whenLabel } from "@/components/occasions-panel";
 import { deadlineText, inDays, upcomingDeadlines, type Deadline } from "@/lib/papers";
 import { fmtMoney, settleUp } from "@/lib/expenses";
 import { BCP47 } from "@/lib/i18n";
+import { isNight, placeOf } from "@/lib/home-now";
 import type { CareAvailability, Expense, EventOccurrence, ListItem, Member, Occasion, Paper, RestockSuggestion } from "@/lib/types";
+
+// The family right now, in 3D; three.js loads after the page.
+const LivingHouse = dynamic(() => import("@/components/living-house"), { ssr: false });
 
 const TravelsTile = dynamic(() => import("@/components/travels-tile"), {
   ssr: false,
@@ -40,6 +44,11 @@ export default function HomePage() {
   const [noteCount, setNoteCount] = useState<number | null>(null);
   const [paperDates, setPaperDates] = useState<Deadline[]>([]);
   const [paperCount, setPaperCount] = useState<number | null>(null);
+  // The living house: who is asleep, whether dinner is logged, and a clock that moves everyone along.
+  const [asleep, setAsleep] = useState<string[]>([]);
+  const [dinner, setDinner] = useState(false);
+  const [now, setNow] = useState(() => new Date());
+  const [flat, setFlat] = useState(false);
   const [expenses, setExpenses] = useState<Pick<Expense, "amount" | "currency" | "paid_by" | "split_among" | "shares">[] | null>(null);
 
   const loadEvents = useCallback(async () => {
@@ -75,6 +84,18 @@ export default function HomePage() {
       .eq("lists.kind", "todo")
       .then(({ count }) => setTodoCount(count ?? 0));
     supabase.from("meals").select("id", { count: "exact", head: true }).then(({ count }) => setMealCount(count ?? 0));
+    supabase
+      .from("kid_sleep")
+      .select("kid_id")
+      .is("ends_at", null)
+      .then(({ data }) => setAsleep((data ?? []).map((r) => r.kid_id as string)));
+    supabase
+      .from("meals")
+      .select("id", { count: "exact", head: true })
+      .eq("eaten_on", dayKey(new Date()))
+      .eq("slot", "dinner")
+      .then(({ count }) => setDinner((count ?? 0) > 0));
+    const clock = setInterval(() => setNow(new Date()), 5 * 60_000);
     supabase.from("notes").select("id", { count: "exact", head: true }).then(({ count }) => setNoteCount(count ?? 0));
     supabase
       .from("restock_suggestions")
@@ -95,8 +116,17 @@ export default function HomePage() {
       });
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(clock);
     };
   }, [supabase, loadEvents]);
+
+  // Where each of us stands in the house scene, right now.
+  const house = {
+    people: members.map((m) => ({ id: m.id, color: m.color, kid: !m.profile_id, place: asleep.includes(m.id) ? ("home" as const) : placeOf(m, events, now), asleep: asleep.includes(m.id) })),
+    night: isNight(now),
+    smoke: dinner,
+    preschool: kids.length > 0,
+  };
 
   const todayKey = dayKey(new Date());
   const tomorrowKey = dayKey(addDays(new Date(), 1));
@@ -120,6 +150,12 @@ export default function HomePage() {
         <p className="text-sm capitalize text-muted">{fmtDate(new Date(), { weekday: "long", day: "numeric", month: "long" })}</p>
         <h1 className={ai ? "sr-only" : "h1"}>{greeting}, {profile.display_name || t("there")}</h1>
       </div>
+
+      {!flat && (
+        <div className={`card relative aspect-[4/3] overflow-hidden p-0 ${house.night ? "bg-[radial-gradient(ellipse_at_50%_30%,#2a3a5c_0%,#111722_75%)]" : ""}`}>
+          <LivingHouse data={house} names={Object.fromEntries(members.map((m) => [m.id, m.name]))} onFail={() => setFlat(true)} />
+        </div>
+      )}
 
       {ai && (
         <AskHem
