@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
 import { useFamily } from "@/components/family-context";
 import { MemberBadge } from "@/components/member-select";
@@ -8,9 +9,12 @@ import { PageHem } from "@/components/page-hem";
 import { Sheet } from "@/components/sheet";
 import { useToast } from "@/components/toast";
 import { dayKey, fmtDate } from "@/lib/dates";
-import { fmtMoney, isEqual, ratioLabel, settleUp } from "@/lib/expenses";
+import { balances, fmtMoney, isEqual, ratioLabel, settleUp } from "@/lib/expenses";
 import { BCP47 } from "@/lib/i18n";
 import type { Expense } from "@/lib/types";
+
+// The balance in 3D; three.js loads after the page.
+const ExpenseScale = dynamic(() => import("@/components/expense-scale"), { ssr: false });
 
 type Shares = Record<string, number>;
 // How an expense is split: equally, the family's usual split, or amounts typed by hand.
@@ -28,6 +32,7 @@ export default function ExpensesPage() {
   const [editing, setEditing] = useState<Draft | null>(null);
   const [usual, setUsual] = useState<Shares | null>(null); // null = 50/50
   const [setting, setSetting] = useState<Record<string, string> | null>(null);
+  const [flat, setFlat] = useState(false);
   // Only the adults (accounts) pay and share; a kid's nappies are split between the parents.
   const adults = members.filter((m) => m.profile_id);
   const name = (id: string) => members.find((m) => m.id === id)?.name ?? "?";
@@ -144,6 +149,24 @@ export default function ExpensesPage() {
       />
 
       <PageHem topic="expenses" />
+
+      {/* Two of us: a balance, each pan holding what that parent paid, tipped towards whoever is owed. */}
+      {rows && rows.length > 0 && ids.length === 2 && !flat && (() => {
+        const paid = ids.map((id) => (rows ?? []).filter((r) => !r.settlement && r.paid_by === id && r.currency === "SEK").reduce((a, r) => a + Number(r.amount), 0));
+        const owed = balances(rows ?? []).get("SEK") ?? new Map<string, number>();
+        const total = paid[0] + paid[1] || 1;
+        // Positive = the right one (second adult) is owed, so their pan goes down.
+        const tilt = ((owed.get(ids[1]) ?? 0) / 100 / total) * 4;
+        return (
+          <div className="card relative -mb-2 aspect-[16/9] overflow-hidden p-0">
+            <ExpenseScale
+              data={{ sides: adults.map((m, i) => ({ color: m.color, paid: paid[i] })), tilt }}
+              labels={adults.map((m, i) => `${m.name} · ${money(paid[i], "SEK")}`)}
+              onFail={() => setFlat(true)}
+            />
+          </div>
+        );
+      })()}
 
       {rows && (
         <section className="card flex flex-col gap-3">
