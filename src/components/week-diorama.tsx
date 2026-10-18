@@ -8,7 +8,7 @@ import { fmtDate, formatTime } from "@/lib/dates";
 import { forIds, isMultiDay } from "@/lib/events";
 import type { WeekDay } from "@/lib/week-days";
 import { createWeekScene, type SceneDay } from "@/lib/week-scene";
-import { actKind, withOthers } from "@/lib/act-kind";
+import { actKind } from "@/lib/act-kind";
 import type { Member } from "@/lib/types";
 
 // The 3D week full screen, in a 9:16 frame (from the calendar's ⤢ button): the
@@ -36,7 +36,7 @@ export function WeekDiorama({ week, onClose }: { week: WeekDay[]; onClose: () =>
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[radial-gradient(ellipse_at_50%_40%,#ffffff_0%,#e9ecf2_70%)] dark:bg-[radial-gradient(ellipse_at_50%_40%,#1f2a3c_0%,#0c111a_75%)]">
       <div className="relative h-dvh w-full max-w-[calc(100dvh*9/16)] overflow-hidden">
-        <Stage week={week} members={members} onPick={setPicked} />
+        <Stage week={week} members={members} onPick={(i) => i !== null && setPicked(i)} />
 
         <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-col gap-2 p-4 pt-[max(1rem,env(safe-area-inset-top))]">
           <div className="pointer-events-auto flex items-start gap-2">
@@ -111,7 +111,8 @@ export function WeekDiorama({ week, onClose }: { week: WeekDay[]; onClose: () =>
 
 // The three.js canvas plus the day names, pinned under each tile. `inline` frames
 // it for a card in the calendar (no frosted cards to leave room for).
-export function Stage({ week, members, onPick, inline = false, onFail }: { week: WeekDay[]; members: Member[]; onPick: (i: number) => void; inline?: boolean; onFail?: () => void }) {
+export function Stage({ week, members, onPick, inline = false, onFail }: { week: WeekDay[]; members: Member[]; onPick: (i: number | null) => void; inline?: boolean; onFail?: () => void }) {
+  const { t } = useFamily();
   // Each activity becomes a little scene with its people in it: who does it and who it is about.
   // Keyed by content, so a calendar reload that changes nothing doesn't rebuild the world.
   const sig = useMemo(() => {
@@ -122,7 +123,6 @@ export function Stage({ week, members, onPick, inline = false, onFail }: { week:
       acts: d.events.map((e) => ({
         kind: actKind(e.title, e.badge, isMultiDay(e)),
         colors: [...new Set([e.responsible_member_id, ...forIds(e)].map(colour).filter((c): c is string => !!c))],
-        guests: withOthers(e.title),
       })),
       needs: d.needs.length,
       todos: d.todos.length,
@@ -135,10 +135,11 @@ export function Stage({ week, members, onPick, inline = false, onFail }: { week:
       sig={sig}
       build={(el) => createWeekScene(el, (JSON.parse(sig) as { days: SceneDay[] }).days, onPick, inline)}
       onFail={onFail}
-      labels={week.map((d) => ({
+      labels={week.map((d, i) => ({
         key: d.key,
         className: `rounded-full px-2 py-0.5 text-[11px] font-semibold shadow-sm ${d.today ? "bg-[#ff7a1a] text-white" : "glass"}`,
-        node: `${fmtDate(d.date, { weekday: "short" })} ${d.date.getDate()}`,
+        // Tomorrow says so, next to today: the way the week goes round.
+        node: week[i - 1]?.today ? `${t("Tomorrow")} →` : `${fmtDate(d.date, { weekday: "short" })} ${d.date.getDate()}`,
       }))}
     />
   );

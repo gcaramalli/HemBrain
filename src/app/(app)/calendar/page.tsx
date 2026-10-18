@@ -263,7 +263,7 @@ export default function CalendarPage() {
       {mode === "week" && !flat && (
         <section className="card relative overflow-hidden p-0">
           <div className="relative aspect-square max-h-[26rem] w-full">
-            <Stage inline week={week} members={members} onPick={(i) => setFocus(week[i].key)} onFail={() => setFlat(true)} />
+            <Stage inline week={week} members={members} onPick={(i) => setFocus(i === null ? null : week[i].key)} onFail={() => setFlat(true)} />
           </div>
           <button onClick={() => setDiorama(true)} aria-label={t("Full screen")} className="glass absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full">
             <Maximize2 size={16} />
@@ -299,7 +299,8 @@ export default function CalendarPage() {
 
       {mode !== "month" && (
         <div className="flex flex-col gap-3">
-          {days.map((day) => {
+          {/* The day tapped in the 3D (or the strip) comes first, right under it. */}
+          {[...days].sort((a, b) => Number(dayKey(b) === focus) - Number(dayKey(a) === focus)).map((day) => {
             const k = dayKey(day);
             const list = byDay.get(k) ?? [];
             const todos = todosByDay.get(k) ?? [];

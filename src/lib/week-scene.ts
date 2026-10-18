@@ -1,7 +1,8 @@
 // The family's week as a little diorama (Calendar → 3D week): a floating slab
 // with the house in the middle and the next seven days as tiles around it,
-// today in front, then clockwise; little arrows round the house point the way
-// from one day to the next, and there is none between the last day and today. On each tile, a little scene per activity (a dinner is a
+// today in front, then counter-clockwise (tomorrow on its right, the way we read);
+// arrows round the house point the way from one day to the next, a wave runs
+// along them from today, and there is none between the last day and today. On each tile, a little scene per activity (a dinner is a
 // table with its people around it, see `week-vignettes.ts`), a green flag for
 // to-dos, an orange beacon where a drop-off or pick-up still needs someone.
 // The camera sways on a 10 s loop.
@@ -13,7 +14,7 @@ import { buildVignette, type ActKind, type Vignette } from "./week-vignettes";
 export type SceneDay = {
   today: boolean;
   weekend: boolean;
-  acts: { kind: ActKind; colors: string[]; guests?: boolean }[]; // the day's main activities, at most 3 shown
+  acts: { kind: ActKind; colors: string[] }[]; // the day's main activities, at most 3 shown
   needs: number; // drop-offs / pick-ups nobody has taken
   todos: number;
 };
@@ -24,13 +25,13 @@ const R = 5.9; // ring of days
 const TILE = 3.9;
 const ROAD_R = 9.3;
 const SLAB_R = 10.2;
-// Day i on the ring: today in front, then clockwise as seen from the camera
-// (tomorrow on the left, the last day on the right of today).
-const dayAngle = (i: number) => Math.PI / 2 + (i / 7) * Math.PI * 2;
-const ARROW_R = 3.1;
+// Day i on the ring: today in front, then counter-clockwise as seen from the
+// camera (tomorrow on the right, the last day on the left of today).
+const dayAngle = (i: number) => Math.PI / 2 - (i / 7) * Math.PI * 2;
+const ARROW_R = 3.0;
 const AZ = 0; // the camera's usual angle: today straight in front
 
-export function createWeekScene(el: HTMLElement, days: SceneDay[], onPick: (day: number) => void, inline = false): WeekScene {
+export function createWeekScene(el: HTMLElement, days: SceneDay[], onPick: (day: number | null) => void, inline = false): WeekScene {
   const stage = createStage(el);
   const { camera, kit, pop, still } = stage;
   const { box, mesh } = kit;
@@ -87,16 +88,20 @@ export function createWeekScene(el: HTMLElement, days: SceneDay[], onPick: (day:
     pop(g, 0.45);
   }
 
-  // Which way the week goes: a flat arrow between each day and the next, none
-  // between the last day and today, so the two neighbours don't read as a sequence.
+  // Which way the week goes: a flat arrow between each day and the next (the
+  // first one orange, from today), none between the last day and today, so the
+  // two neighbours don't read as a sequence; a wave lifts them one after the other.
   const chevron = new THREE.Shape([new THREE.Vector2(0.34, 0), new THREE.Vector2(-0.22, 0.3), new THREE.Vector2(-0.08, 0), new THREE.Vector2(-0.22, -0.3)]);
   const arrowGeo = new THREE.ShapeGeometry(chevron);
   arrowGeo.rotateX(-Math.PI / 2);
+  const arrows: THREE.Mesh[] = [];
   for (let i = 0; i < 6; i++) {
-    const a = dayAngle(i + 0.5);
-    const arrow = mesh(arrowGeo, PALETTE.dark, Math.cos(a) * ARROW_R, 0.03, Math.sin(a) * ARROW_R);
-    arrow.rotation.y = -(a + Math.PI / 2); // along the ring, towards the next day
+    const a = dayAngle(i + (i ? 0.5 : 0.6)); // the first one a bit off today's tile, not hidden by its scene
+    const arrow = mesh(arrowGeo, i ? PALETTE.dark : PALETTE.orange, Math.cos(a) * ARROW_R, 0.03, Math.sin(a) * ARROW_R);
+    arrow.rotation.y = -(a - Math.PI / 2); // along the ring, towards the next day
+    arrow.scale.setScalar(1.6);
     arrow.castShadow = false;
+    arrows.push(arrow);
     pop(arrow, 0.7 + i * 0.05);
   }
 
@@ -115,7 +120,7 @@ export function createWeekScene(el: HTMLElement, days: SceneDay[], onPick: (day:
     const layout = [[[0, 0]], [[-0.95, 0.1], [0.95, -0.1]], [[-0.95, -0.7], [0.95, -0.7], [0, 0.8]]][acts.length - 1] ?? [];
     const size = [3.2, 1.8, 1.5][acts.length - 1];
     acts.forEach((a, j) => {
-      const v = buildVignette(kit, a.kind, a.colors, i + j * 0.37, a.guests);
+      const v = buildVignette(kit, a.kind, a.colors, i + j * 0.37);
       v.group.position.set(layout[j][0], top, layout[j][1]);
       v.group.scale.setScalar(size);
       vignettes.push(v);
@@ -147,7 +152,7 @@ export function createWeekScene(el: HTMLElement, days: SceneDay[], onPick: (day:
   stage.onTap((hit) => {
     const day = hit?.object.userData.day;
     focused = day === undefined || day === focused ? null : day;
-    if (day !== undefined) onPick(day);
+    onPick(focused);
   });
 
   // Frame the plate whatever the screen shape (tall 9:16 or a card).
@@ -188,6 +193,12 @@ export function createWeekScene(el: HTMLElement, days: SceneDay[], onPick: (day:
       for (const b of beacons) b.scale.setScalar(0.26 + 0.08 * (0.5 + 0.5 * Math.sin(time * 6)));
       (lamps[0].material as THREE.MeshStandardMaterial).emissiveIntensity = 1.1 + 0.3 * Math.sin(time * 2);
       for (const v of vignettes) v.update(time);
+      arrows.forEach((a, i) => {
+        // today → the last day, again and again, once the arrows have popped in
+        const wave = clamp01(t - 1.2) * Math.pow(Math.max(0, Math.cos(time * 2.2 - i * 0.8)), 6);
+        a.position.y = 0.03 + 0.18 * wave;
+        a.scale.setScalar(1.6 * (1 + 0.3 * wave));
+      });
     } else {
       home.puff(0, false);
       for (const v of vignettes) v.update(0);
