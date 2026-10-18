@@ -1,8 +1,9 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useFamily } from "@/components/family-context";
+import { Scene3D } from "@/components/scene-3d";
 import { fmtDate, formatTime } from "@/lib/dates";
 import { isMultiDay } from "@/lib/events";
 import type { WeekDay } from "@/lib/week-days";
@@ -111,19 +112,6 @@ export function WeekDiorama({ week, onClose }: { week: WeekDay[]; onClose: () =>
 // The three.js canvas plus the day names, pinned under each tile. `inline` frames
 // it for a card in the calendar (no frosted cards to leave room for).
 export function Stage({ week, members, onPick, inline = false, onFail }: { week: WeekDay[]; members: Member[]; onPick: (i: number) => void; inline?: boolean; onFail?: () => void }) {
-  const box = useRef<HTMLDivElement>(null);
-  const tags = useRef<(HTMLSpanElement | null)[]>([]);
-  const [failed, setFailed] = useState(false);
-  const pick = useRef(onPick);
-  useEffect(() => {
-    pick.current = onPick;
-  }, [onPick]);
-
-  const fail = useRef(onFail);
-  useEffect(() => {
-    fail.current = onFail;
-  }, [onFail]);
-
   // Each activity becomes a little scene with its people in it: who does it and who it is about.
   // Keyed by content, so a calendar reload that changes nothing doesn't rebuild the world.
   const sig = useMemo(() => {
@@ -138,49 +126,20 @@ export function Stage({ week, members, onPick, inline = false, onFail }: { week:
       needs: d.needs.length,
       todos: d.todos.length,
     }));
-    return JSON.stringify(days);
-  }, [week, members]);
+    return JSON.stringify({ days, inline });
+  }, [week, members, inline]);
 
-  useEffect(() => {
-    if (!box.current) return;
-    let scene: ReturnType<typeof createWeekScene>;
-    try {
-      scene = createWeekScene(box.current, JSON.parse(sig) as SceneDay[], (i) => pick.current(i), inline);
-    } catch {
-      setFailed(true);
-      fail.current?.();
-      return;
-    }
-    let frame = 0;
-    const place = () => {
-      frame = requestAnimationFrame(place);
-      scene.labels().forEach((p, i) => {
-        const el = tags.current[i];
-        if (el) el.style.transform = `translate(${p.x * box.current!.clientWidth}px, ${p.y * box.current!.clientHeight}px) translate(-50%, -50%)`;
-      });
-    };
-    frame = requestAnimationFrame(place);
-    return () => {
-      cancelAnimationFrame(frame);
-      scene.dispose();
-    };
-  }, [sig, inline]);
-
-  if (failed) return null;
   return (
-    <div ref={box} className="absolute inset-0 touch-manipulation">
-      {week.map((d, i) => (
-        <span
-          key={d.key}
-          ref={(el) => {
-            tags.current[i] = el;
-          }}
-          className={`pointer-events-none absolute left-0 top-0 rounded-full px-2 py-0.5 text-[11px] font-semibold shadow-sm ${d.today ? "bg-[#ff7a1a] text-white" : "glass"}`}
-        >
-          {fmtDate(d.date, { weekday: "short" })} {d.date.getDate()}
-        </span>
-      ))}
-    </div>
+    <Scene3D
+      sig={sig}
+      build={(el) => createWeekScene(el, (JSON.parse(sig) as { days: SceneDay[] }).days, onPick, inline)}
+      onFail={onFail}
+      labels={week.map((d) => ({
+        key: d.key,
+        className: `rounded-full px-2 py-0.5 text-[11px] font-semibold shadow-sm ${d.today ? "bg-[#ff7a1a] text-white" : "glass"}`,
+        node: `${fmtDate(d.date, { weekday: "short" })} ${d.date.getDate()}`,
+      }))}
+    />
   );
 }
 
