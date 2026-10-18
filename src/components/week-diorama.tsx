@@ -8,7 +8,8 @@ import { CARE_KINDS, careKind, findSlot, isCareDay, type CareKind } from "@/lib/
 import { addDays, dayKey, fmtDate, formatTime, startOfDay } from "@/lib/dates";
 import { groupByDay } from "@/lib/events";
 import { fetchCalendar } from "@/lib/occasions";
-import { createWeekScene, type SceneDay, type ScenePawn } from "@/lib/week-scene";
+import { createWeekScene, type SceneDay } from "@/lib/week-scene";
+import { actKind } from "@/lib/week-vignettes";
 import type { EventOccurrence, ListItem, Member } from "@/lib/types";
 
 const DAYS = 7;
@@ -148,25 +149,20 @@ export function Stage({ week, members, onPick }: { week: Day[]; members: Member[
 
   useEffect(() => {
     if (!box.current) return;
-    const days: SceneDay[] = week.map((d) => {
-      const per = new Map<string, number>();
-      for (const e of d.events) if (!e.badge) per.set(e.responsible_member_id ?? "", (per.get(e.responsible_member_id ?? "") ?? 0) + 1);
-      return {
-        weekend: [0, 6].includes(d.date.getDay()),
-        stacks: [...per].map(([id, count]) => ({ color: members.find((m) => m.id === id)?.color ?? "#b9c0cc", count })),
-        dates: d.events.filter((e) => e.badge).length,
-        needs: d.needs.length,
-        todos: d.todos.length,
-      };
-    });
-    // Each pawn goes to the first day with something they do or that is about them.
-    const pawns: ScenePawn[] = members.map((m) => {
-      const i = week.findIndex((d) => d.events.some((e) => !e.badge && (e.responsible_member_id === m.id || e.for_member_id === m.id)));
-      return { color: m.color, kid: !m.profile_id, day: i < 0 ? null : i };
-    });
+    // Each activity becomes a little scene with its people in it: who does it and who it is about.
+    const colour = (id: string | null) => members.find((m) => m.id === id)?.color;
+    const days: SceneDay[] = week.map((d) => ({
+      weekend: [0, 6].includes(d.date.getDay()),
+      acts: d.events.map((e) => ({
+        kind: actKind(e.title, e.badge),
+        colors: [...new Set([colour(e.responsible_member_id), colour(e.for_member_id)].filter((c): c is string => !!c))],
+      })),
+      needs: d.needs.length,
+      todos: d.todos.length,
+    }));
     let scene: ReturnType<typeof createWeekScene>;
     try {
-      scene = createWeekScene(box.current, days, pawns, (i) => pick.current(i));
+      scene = createWeekScene(box.current, days, (i) => pick.current(i));
     } catch {
       setFailed(true);
       return;
