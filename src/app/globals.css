@@ -187,6 +187,15 @@ body {
 }
 .landing-glow .landing-blob { opacity: 0.45; }
 
+/* Frosted glass over the 3D week (WeekDiorama). */
+.glass {
+  background: color-mix(in srgb, var(--surface) 62%, transparent);
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  border: 1px solid color-mix(in srgb, var(--surface) 70%, transparent);
+  box-shadow: 0 8px 30px rgb(20 30 50 / 0.12);
+}
+
 /* ThinkingDots: the logo's three dots, one after the other. */
 @keyframes thinking {
   0%, 70%, 100% { transform: translateY(0); opacity: 0.45; }
