@@ -309,6 +309,7 @@ export const sv: Record<string, string> = {
   "Wedding": "Bröllop",
   "Weddings and birthdays of the people around you. They stay out of the calendar; you get a reminder the evening before. Only your own dates appear in the calendar.": "Bröllop och födelsedagar hos folk runt er. De hålls utanför kalendern; du får en påminnelse kvällen innan. Bara era egna datum syns i kalendern.",
   "Week": "Vecka",
+  "Next 7 days": "Kommande 7 dagar",
   "Week of {date}": "Veckan från {date}",
   "What did we eat?": "Vad åt vi?",
   "What we ate": "Vad vi åt",

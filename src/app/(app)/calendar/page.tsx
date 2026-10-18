@@ -78,7 +78,8 @@ export default function CalendarPage() {
   const [editing, setEditing] = useState<Parameters<typeof EventForm>[0]["initial"] | null>(null);
   const [diorama, setDiorama] = useState(false);
 
-  const from = mode === "month" ? startOfMonthGrid(anchor) : mode === "week" ? startOfWeek(anchor) : startOfDay(anchor);
+  // Week = the next seven days from the chosen day (today by default), not Monday to Sunday.
+  const from = mode === "month" ? startOfMonthGrid(anchor) : startOfDay(anchor);
   const span = mode === "month" ? MONTH_CELLS : mode === "week" ? 7 : AGENDA_DAYS;
   const fromKey = dayKey(from);
 
@@ -146,7 +147,9 @@ export default function CalendarPage() {
     mode === "month"
       ? fmtDate(anchor, { month: "long", year: "numeric" })
       : mode === "week"
-        ? t("Week of {date}", { date: fmtDate(days[0], { day: "numeric", month: "short" }) })
+        ? dayKey(days[0]) === dayKey(new Date())
+          ? t("Next 7 days")
+          : t("From {date}", { date: fmtDate(days[0], { day: "numeric", month: "short" }) })
         : t("From {date}", { date: fmtDate(days[0], { day: "numeric", month: "short" }) });
 
   return (

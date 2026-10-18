@@ -309,6 +309,7 @@ export const fr: Record<string, string> = {
   "Wedding": "Mariage",
   "Weddings and birthdays of the people around you. They stay out of the calendar; you get a reminder the evening before. Only your own dates appear in the calendar.": "Mariages et anniversaires de vos proches. Ils restent hors du calendrier ; tu reçois un rappel la veille au soir. Seules vos propres dates apparaissent dans le calendrier.",
   "Week": "Semaine",
+  "Next 7 days": "Les 7 prochains jours",
   "Week of {date}": "Semaine du {date}",
   "What did we eat?": "Qu'a-t-on mangé ?",
   "What we ate": "Ce qu'on a mangé",
