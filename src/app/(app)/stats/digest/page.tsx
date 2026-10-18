@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useFamily } from "@/components/family-context";
 import { StatsHeader } from "@/components/page-header";
-import { fmtDate } from "@/lib/dates";
-import { digestEmail, pick, type Digest } from "@/lib/digest-format";
+import { dayKey, fmtDate } from "@/lib/dates";
+import { digestEmail, parseDraft, pick, type Digest } from "@/lib/digest-format";
 import { LOCALES, type Locale } from "@/lib/i18n";
 
 type Field = "subject" | "body" | "nudge";
@@ -24,6 +24,7 @@ export default function DigestAdminPage() {
   const [armed, setArmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [pasted, setPasted] = useState("");
 
   const load = useCallback(async () => {
     const { data } = await supabase.from("digests").select("*").order("week_of", { ascending: false }).limit(12);
@@ -79,6 +80,29 @@ export default function DigestAdminPage() {
     if (!test) load();
   }
 
+  // A draft for today, when the Sunday routine didn't write one: empty, or from a pasted text.
+  async function createDraft() {
+    setBusy(true);
+    setMessage(null);
+    const parsed = parseDraft(pasted);
+    const { data, error } = await supabase
+      .from("digests")
+      .insert({
+        week_of: dayKey(new Date()),
+        subject: { en: "", ...parsed.subject },
+        body: { en: "", ...parsed.body },
+        nudge: Object.keys(parsed.nudge).length ? parsed.nudge : null,
+      })
+      .select("id")
+      .single();
+    setBusy(false);
+    if (error) return setMessage(`${t("Not created")}: ${error.message}`);
+    setPasted("");
+    await load();
+    setId(data.id);
+    setEditing(false);
+  }
+
   async function skip() {
     if (!d) return;
     setDigests((xs) => xs?.map((x) => (x.id === d.id ? { ...x, status: "skipped" } : x)) ?? null);
@@ -94,6 +118,16 @@ export default function DigestAdminPage() {
       {digests === null && <p className="text-muted">{t("Loading…")}</p>}
       {digests && !digests.length && (
         <p className="card text-sm text-muted">{t("No news yet. Claude writes a draft on Sunday morning when something new was shipped during the week.")}</p>
+      )}
+
+      {digests && !digests.some((x) => x.week_of === dayKey(new Date())) && (
+        <section className="card flex flex-col gap-2">
+          <h2 className="h2">{t("New draft for today")}</h2>
+          <p className="text-sm text-muted">{t("Nothing was written for today. Start an empty draft, or paste a whole one: “# en”, “# fr”, “# sv”, each with “## subject”, “## body” and “## nudge”.")}</p>
+          <textarea className="input min-h-32 font-mono text-sm" value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder={"# en\n## subject\n…\n## body\n…\n## nudge\n…\n# fr\n…"} />
+          <button className="btn self-start" disabled={busy} onClick={createDraft}>{pasted.trim() ? t("Create the draft from this text") : t("Create an empty draft")}</button>
+          {message && <p className="text-sm">{message}</p>}
+        </section>
       )}
 
       {d && preview && (
