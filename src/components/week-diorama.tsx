@@ -8,7 +8,7 @@ import { fmtDate, formatTime } from "@/lib/dates";
 import { isMultiDay } from "@/lib/events";
 import type { WeekDay } from "@/lib/week-days";
 import { createWeekScene, type SceneDay } from "@/lib/week-scene";
-import { actKind } from "@/lib/week-vignettes";
+import { actKind } from "@/lib/act-kind";
 import type { Member } from "@/lib/types";
 
 // The 3D week full screen, in a 9:16 frame (from the calendar's ⤢ button): the
