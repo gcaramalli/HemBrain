@@ -313,8 +313,45 @@ export function house(kit: Kit) {
 
 // A round floating plate, the base of every diorama.
 export function plate(kit: Kit, r: number, color = PALETTE.ground) {
+  // As thick as the calendar's (0.9) when large; thinner when small, so it stays a plate, not a drum.
+  const h = Math.min(0.9, 0.1 + r * 0.08);
   const g = new THREE.Group();
-  g.add(kit.mesh(kit.cylinder(r, 0.9, 96), color, 0, -0.45, 0));
-  g.add(kit.mesh(kit.cylinder(r - 0.5, 0.5, 96), "#e4e0d7", 0, -1.05, 0));
+  g.add(kit.mesh(kit.cylinder(r, h, 96), color, 0, -h / 2, 0));
+  g.add(kit.mesh(kit.cylinder(r - Math.min(0.5, r * 0.05), h * 0.55, 96), "#e4e0d7", 0, -h - h * 0.27, 0));
   return g;
+}
+
+// —— The house style: every scene is a diorama on a floating round plate ————
+
+// The calendar's camera for any diorama: looking down at ~50°, a gentle
+// push-in as it builds, then a slow sway on a 10 s loop. `radius` = the
+// plate, `height` = how tall the tallest thing on it is; framed to fit the
+// card whatever its shape; `target` / `zoom` frame a tall thing (the balance) closer.
+export function diorama(stage: Stage, { radius, height = 1, el = 50, sway = 0.25, az = 0, target = new THREE.Vector3(), zoom = 1 }: { radius: number; height?: number; el?: number; sway?: number; az?: number; target?: THREE.Vector3; zoom?: number }) {
+  const { camera, still } = stage;
+  let fit = 20;
+  stage.onResize(() => {
+    const tanV = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+    fit = Math.max((radius + 0.4) / (tanV * camera.aspect), (radius * 0.84 + height * 0.45) / tanV) / zoom;
+  });
+  const look = target.clone().add(new THREE.Vector3(0, -0.2, radius * 0.09));
+  stage.onTick((_time, _dt, t) => {
+    const loop = (((t - 1.2) % 10) + 10) % 10;
+    const phase = (loop / 10) * Math.PI * 2;
+    const intro = still ? 0 : 1 - smooth(clamp01(t / 1.4));
+    const a = still ? az : az + sway * Math.sin(phase);
+    const e = THREE.MathUtils.degToRad(el + 10 * intro);
+    const d = fit * (1.02 - 0.05 * (0.5 - 0.5 * Math.cos(phase)) + 0.25 * intro);
+    camera.position.set(look.x + Math.sin(a) * Math.cos(e) * d, look.y + Math.sin(e) * d, look.z + Math.cos(a) * Math.cos(e) * d);
+    camera.lookAt(look);
+  });
+}
+
+// A plot like the calendar's days: a white rounded tile (weekend / quiet = soft
+// teal), with an orange rim when it needs attention. Things stand on `top`.
+export function tile(kit: Kit, size: number, { soft = false, attention = false } = {}) {
+  const g = new THREE.Group();
+  if (attention) g.add(kit.mesh(kit.box(size + 0.3, 0.16, size + 0.3, 0.16), PALETTE.orange, 0, 0.08, 0));
+  g.add(kit.mesh(kit.box(size, 0.26, size, 0.14), soft ? PALETTE.weekend : PALETTE.tile, 0, 0.16 + (attention ? 0.04 : 0), 0));
+  return { group: g, top: 0.29 + (attention ? 0.04 : 0) };
 }
