@@ -56,7 +56,7 @@ export function Pantry({ refreshKey }: { refreshKey?: number }) {
   return (
     <section className="card flex flex-col gap-2 p-0">
       {!flat && (
-        <div className="relative w-full" style={{ aspectRatio: `4 / ${1.4 + Math.min(3, Math.ceil(stock.length / 4)) * 0.75}` }}>
+        <div className="relative aspect-square max-h-[26rem] w-full">
           <Pantry3D jars={jars} names={stock.map((s) => s.name)} onPick={setPicked} onFail={() => setFlat(true)} />
         </div>
       )}

@@ -158,7 +158,7 @@ export default function ExpensesPage() {
         // Positive = the right one (second adult) is owed, so their pan goes down.
         const tilt = ((owed.get(ids[1]) ?? 0) / 100 / total) * 4;
         return (
-          <div className="card relative -mb-2 aspect-[16/9] overflow-hidden p-0">
+          <div className="card relative -mb-2 aspect-[4/3] overflow-hidden p-0">
             <ExpenseScale
               data={{ sides: adults.map((m, i) => ({ color: m.color, paid: paid[i] })), tilt }}
               labels={adults.map((m, i) => `${m.name} · ${money(paid[i], "SEK")}`)}

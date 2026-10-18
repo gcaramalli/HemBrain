@@ -11,7 +11,7 @@ export default function ExpenseScale({ data, labels, onFail }: { data: ScaleData
       sig={sig}
       build={(el) => createScaleScene(el, JSON.parse(sig) as ScaleData)}
       onFail={onFail}
-      labels={labels.map((l, i) => ({ key: String(i), node: l, className: "glass whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold" }))}
+      labels={labels.map((l, i) => ({ key: String(i), node: l, className: "glass whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold shadow-sm" }))}
     />
   );
 }

@@ -1,23 +1,29 @@
 // The expenses as a balance (Home → Expenses): one pan per parent in their
 // colour with a stack of coins for what they paid, the beam tipped towards
 // whoever is owed money (they have put more in). All square = level. The
-// beam swings into place like a real one (a damped spring).
+// beam swings into place like a real one (a damped spring). In the calendar's
+// style: on a floating plate, on a white plot with an orange rim until squared.
 import * as THREE from "three";
-import { createStage, PALETTE } from "./three-kit";
+import { createStage, diorama, PALETTE, plate, tile } from "./three-kit";
 
 export type ScaleData = { sides: { color: string; paid: number }[]; tilt: number }; // tilt: -1 (left down) … 1 (right down)
 
 export function createScaleScene(el: HTMLElement, data: ScaleData) {
-  const stage = createStage(el, { shadow: 4, fov: 30 });
-  const { camera, kit, pop, still } = stage;
+  const stage = createStage(el, { shadow: 5 });
+  const { kit, pop, still } = stage;
   const { box, mesh, cylinder } = kit;
   const W = 1.5; // half the beam
 
-  // Base, post and pivot.
-  pop(mesh(box(1.2, 0.12, 0.7, 0.05), PALETTE.dark, 0, 0.06, 0), 0);
-  pop(mesh(box(0.12, 1.5, 0.12, 0.04), PALETTE.dark, 0, 0.85, 0), 0.05);
+  // Plate, plot, post and pivot.
+  const R = 2.5;
+  pop(plate(kit, R), 0);
+  const plot = tile(kit, 1.6, { attention: Math.abs(data.tilt) > 0.01 });
+  pop(plot.group, 0.05);
+  const y0 = plot.top;
+  pop(mesh(box(0.9, 0.1, 0.6, 0.05), PALETTE.dark, 0, y0 + 0.05, 0), 0.08);
+  pop(mesh(box(0.12, 1.5, 0.12, 0.04), PALETTE.dark, 0, y0 + 0.8, 0), 0.1);
   const beam = new THREE.Group();
-  beam.position.y = 1.65;
+  beam.position.y = y0 + 1.6;
   beam.add(mesh(box(W * 2 + 0.2, 0.08, 0.1, 0.03), PALETTE.gold, 0, 0, 0));
   beam.add(mesh(kit.sphere, PALETTE.gold, 0, 0, 0));
   beam.children[1].scale.setScalar(0.1);
@@ -56,12 +62,7 @@ export function createScaleScene(el: HTMLElement, data: ScaleData) {
   const target = Math.max(-1, Math.min(1, data.tilt)) * 0.3;
   let angle = still ? target : 0;
   let speed = 0;
-  stage.onResize(() => {
-    const tanV = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-    const d = Math.max(2.3 / (tanV * camera.aspect), 1.3 / tanV);
-    camera.position.set(0, 1.5 + d * 0.25, d);
-    camera.lookAt(0, 1.0, 0);
-  });
+  diorama(stage, { radius: R, height: 2.6, el: 30, target: new THREE.Vector3(0, 0.95, 0), zoom: 1.35 }); // lower and closer than the calendar, so the tilt reads
   stage.onTick((_time, dt, t) => {
     if (!still && t > 0.9) {
       // A damped spring towards the target: it overshoots a little and settles.
@@ -74,6 +75,6 @@ export function createScaleScene(el: HTMLElement, data: ScaleData) {
 
   // Labels under each pan.
   const at = new THREE.Vector3();
-  const labels = () => pans.map((p) => stage.project(p.localToWorld(at.set(0, -1.15, 0))));
+  const labels = () => pans.map((p) => stage.project(p.localToWorld(at.set(0, -0.85, 0.75))));
   return { dispose: stage.dispose, labels };
 }
