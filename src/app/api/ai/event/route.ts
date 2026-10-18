@@ -9,7 +9,7 @@ const Draft = z.object({
   all_day: z.boolean(),
   location: z.string().nullable(),
   responsible: z.string().nullable().describe("First name of who does it, from the family list"),
-  for_whom: z.string().nullable().describe("First name of who it is about, from the family list"),
+  for_whom: z.array(z.string()).describe("First names of who it is about, from the family list (empty = everyone)"),
   care: z.enum(["dropoff", "pickup"]).nullable().describe("Taking a child to / fetching a child from preschool or school"),
   repeats: z.enum(["daily", "weekdays", "weekly", "biweekly", "monthly"]).nullable(),
 });

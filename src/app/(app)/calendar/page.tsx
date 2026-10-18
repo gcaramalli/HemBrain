@@ -11,7 +11,7 @@ import { EventForm, newEventDraft } from "@/components/event-form";
 import { EventRow } from "@/components/event-row";
 import { Sheet } from "@/components/sheet";
 import { addDays, dayKey, fmtDate, formatDayHeading, startOfDay } from "@/lib/dates";
-import { groupByDay } from "@/lib/events";
+import { groupByDay, involves } from "@/lib/events";
 import { fetchCalendar } from "@/lib/occasions";
 import { MODULES } from "@/lib/modules";
 import { careKind } from "@/lib/care";
@@ -116,7 +116,7 @@ export default function CalendarPage() {
   const events = useMemo(
     () =>
       allEvents.filter(
-        (e) => careKind(e) === null && (!who || e.badge || e.responsible_member_id === who || e.for_member_id === who),
+        (e) => careKind(e) === null && (!who || e.badge || involves(e, who)),
       ),
     [allEvents, who],
   );
@@ -138,7 +138,7 @@ export default function CalendarPage() {
     () =>
       buildWeek(
         days,
-        allEvents.filter((e) => !who || e.badge || e.responsible_member_id === who || e.for_member_id === who || careKind(e) !== null),
+        allEvents.filter((e) => !who || e.badge || involves(e, who) || careKind(e) !== null),
         allTodos.filter((i) => !who || i.assignee_member_id === who),
         kids,
       ),

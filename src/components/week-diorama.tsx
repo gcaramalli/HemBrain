@@ -5,10 +5,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useFamily } from "@/components/family-context";
 import { Scene3D } from "@/components/scene-3d";
 import { fmtDate, formatTime } from "@/lib/dates";
-import { isMultiDay } from "@/lib/events";
+import { forIds, isMultiDay } from "@/lib/events";
 import type { WeekDay } from "@/lib/week-days";
 import { createWeekScene, type SceneDay } from "@/lib/week-scene";
-import { actKind } from "@/lib/act-kind";
+import { actKind, withOthers } from "@/lib/act-kind";
 import type { Member } from "@/lib/types";
 
 // The 3D week full screen, in a 9:16 frame (from the calendar's ⤢ button): the
@@ -121,7 +121,8 @@ export function Stage({ week, members, onPick, inline = false, onFail }: { week:
       weekend: [0, 6].includes(d.date.getDay()),
       acts: d.events.map((e) => ({
         kind: actKind(e.title, e.badge, isMultiDay(e)),
-        colors: [...new Set([colour(e.responsible_member_id), colour(e.for_member_id)].filter((c): c is string => !!c))],
+        colors: [...new Set([e.responsible_member_id, ...forIds(e)].map(colour).filter((c): c is string => !!c))],
+        guests: withOthers(e.title),
       })),
       needs: d.needs.length,
       todos: d.todos.length,

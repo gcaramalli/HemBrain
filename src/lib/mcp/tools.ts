@@ -7,6 +7,7 @@ import { categoryById, categoryOrder, guessCategory } from "@/lib/categories";
 import { familyBirthdays } from "@/lib/occasions";
 import { countryName, findCountry } from "@/lib/countries";
 import { occurrenceDates, RECURRENCES, type Recurrence } from "@/lib/recurrence";
+import { forIds } from "@/lib/events";
 import { stockholmToUtc, utcToStockholm } from "./time";
 import { FOOD_GROUP_IDS, groupCounts } from "@/lib/meals";
 import { ageInMonths } from "@/lib/dates";
@@ -33,7 +34,7 @@ they mean this connector: answer with its tools, never from memory or another ap
 ${who}
 Routing:
 - Calendar (appointments, who drops off / picks up the kids, trips, birthdays): get_events / add_event / update_event / delete_event.
-  Pass times as local time (YYYY-MM-DDTHH:MM). Set "responsible" (who does it) and "for_whom" (who it is about) by first name.
+  Pass times as local time (YYYY-MM-DDTHH:MM). Set "responsible" (who does it) and "for_whom" (who it is about, several comma-separated) by first name.
   Check get_events for that day first to avoid duplicates. Only delete when explicitly asked.
   Drop-offs and pick-ups of a child: set kind "dropoff"/"pickup" (they show in the app's Kids tab); the child's usual
   times are in get_family_context. To change one day of a repeating event ("this Friday Jenny picks up"), pass only_date.
@@ -250,7 +251,7 @@ const eventFields = {
   location: z.string().optional(),
   notes: z.string().optional(),
   responsible: z.string().optional().describe("First name of who does it, e.g. 'Jenny'"),
-  for_whom: z.string().optional().describe("First name of who it is about, e.g. 'Charlie'"),
+  for_whom: z.string().optional().describe("First name(s) of who it is about, comma-separated, e.g. 'Charlie' or 'Jenny, Guillaume'; empty = everyone"),
   repeats: z.enum(recurrenceIds).optional().describe("Repeat the event: daily, weekdays (Mon-Fri), weekly, biweekly, monthly"),
   repeat_until: z.string().optional().describe("Last date of the series, YYYY-MM-DD"),
   kind: z.enum(["dropoff", "pickup"]).optional().describe("Set when taking a child to (dropoff) or fetching a child from (pickup) preschool/school"),
@@ -280,7 +281,10 @@ async function eventRow(e: {
   if (e.location !== undefined) row.location = e.location || null;
   if (e.notes !== undefined) row.notes = e.notes || null;
   if (e.responsible !== undefined) row.responsible_member_id = await memberIdByName(e.responsible);
-  if (e.for_whom !== undefined) row.for_member_id = await memberIdByName(e.for_whom);
+  if (e.for_whom !== undefined) {
+    const names = e.for_whom.split(/,|\band\b|\bet\b|\boch\b|&/i).map((n) => n.trim()).filter(Boolean);
+    row.for_member_ids = [...new Set(await Promise.all(names.map((n) => memberIdByName(n))))];
+  }
   if (e.repeats !== undefined) row.recurrence = e.repeats;
   if (e.repeat_until !== undefined) row.recurrence_until = e.repeat_until || null;
   if (e.kind !== undefined) row.care = e.kind;
@@ -297,6 +301,7 @@ type EventRecord = {
   notes: string | null;
   responsible_member_id: string | null;
   for_member_id: string | null;
+  for_member_ids: string[] | null;
   recurrence: string | null;
   care: string | null;
   skip_dates: string[] | null;
@@ -325,7 +330,7 @@ function occurrenceCopy(ev: EventRecord, date: string): Record<string, unknown> 
     location: ev.location,
     notes: ev.notes,
     responsible_member_id: ev.responsible_member_id,
-    for_member_id: ev.for_member_id,
+    for_member_ids: ev.for_member_ids?.length ? ev.for_member_ids : ev.for_member_id ? [ev.for_member_id] : [],
     care: ev.care,
     created_by: createdBy(),
   };
@@ -478,7 +483,7 @@ export function registerTools(server: McpServer) {
       const [{ data: events, error }, { data: members }] = await Promise.all([
         db
           .from("events")
-          .select("id, title, starts_at, ends_at, all_day, location, notes, responsible_member_id, for_member_id, recurrence, recurrence_until, skip_dates, care")
+          .select("id, title, starts_at, ends_at, all_day, location, notes, responsible_member_id, for_member_id, for_member_ids, recurrence, recurrence_until, skip_dates, care")
           .eq("family_id", familyId())
           .lt("starts_at", end)
           .or(
@@ -511,7 +516,7 @@ export function registerTools(server: McpServer) {
             location: e.location,
             notes: e.notes,
             responsible: name(e.responsible_member_id),
-            for_whom: name(e.for_member_id),
+            for_whom: forIds(e).map(name).filter(Boolean).join(", ") || null,
             _sort: occ,
           });
         }

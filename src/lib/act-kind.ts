@@ -32,3 +32,6 @@ export function actKind(title: string, badge?: string, multiDay = false): ActKin
   // Away for several days ("Nice avec Charlie", "Paris pour Skema"): a trip, unless it's a visit or a party.
   return multiDay && ["unknown", "lesson", "work", "outing"].includes(kind) ? "travel" : kind;
 }
+
+// Whether the title says others join us ("dinner with the Svenssons", "chez Paul", "middag hos Anna").
+export const withOthers = (title: string) => /(\bwith\b|\bavec\b|\bchez\b|\bmed\b|\bhos\b|friends|\bamis?\b|v[äa]nner|guests|invit[ée]s|g[äa]ster)/i.test(title);

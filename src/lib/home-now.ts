@@ -1,6 +1,6 @@
 // Where each of us is right now, from today's calendar (the living house on Home).
 import { careKind, isCareDay, usualTime } from "./care";
-import { isMultiDay } from "./events";
+import { involves, isMultiDay } from "./events";
 import type { EventOccurrence, Member } from "./types";
 import { actKind } from "./act-kind";
 
@@ -17,7 +17,7 @@ const minutes = (hhmm: string) => {
 function current(events: EventOccurrence[], m: Member, now: Date) {
   return events.find((e) => {
     if (careKind(e) !== null || e.badge) return false;
-    if (e.responsible_member_id !== m.id && e.for_member_id !== m.id) return false;
+    if (!involves(e, m.id)) return false;
     const start = new Date(e.occurrence_start);
     const end = e.occurrence_end ? new Date(e.occurrence_end) : new Date(start.getTime() + 3600_000);
     if (e.all_day) {
