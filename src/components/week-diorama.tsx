@@ -6,7 +6,7 @@ import { useFamily } from "@/components/family-context";
 import { fetchDueTodos, todoDay } from "@/components/todo-row";
 import { CARE_KINDS, careKind, findSlot, isCareDay, type CareKind } from "@/lib/care";
 import { addDays, dayKey, fmtDate, formatTime, startOfDay } from "@/lib/dates";
-import { groupByDay } from "@/lib/events";
+import { groupByDay, isMultiDay } from "@/lib/events";
 import { fetchCalendar } from "@/lib/occasions";
 import { createWeekScene, type SceneDay } from "@/lib/week-scene";
 import { actKind } from "@/lib/week-vignettes";
@@ -154,7 +154,7 @@ export function Stage({ week, members, onPick }: { week: Day[]; members: Member[
     const days: SceneDay[] = week.map((d) => ({
       weekend: [0, 6].includes(d.date.getDay()),
       acts: d.events.map((e) => ({
-        kind: actKind(e.title, e.badge),
+        kind: actKind(e.title, e.badge, isMultiDay(e)),
         colors: [...new Set([colour(e.responsible_member_id), colour(e.for_member_id)].filter((c): c is string => !!c))],
       })),
       needs: d.needs.length,
