@@ -3,6 +3,8 @@
 import { CalendarSegments, PageHeader } from "@/components/page-header";
 import { PageHem } from "@/components/page-hem";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
+import { Box } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useFamily } from "@/components/family-context";
 import { EventForm, newEventDraft } from "@/components/event-form";
@@ -15,6 +17,9 @@ import { MODULES } from "@/lib/modules";
 import { careKind } from "@/lib/care";
 import type { EventOccurrence, ListItem, Member } from "@/lib/types";
 import { fetchDueTodos, TodoRow, todoDay } from "@/components/todo-row";
+
+// three.js only loads when the 3D week is opened.
+const WeekDiorama = dynamic(() => import("@/components/week-diorama").then((m) => m.WeekDiorama), { ssr: false });
 
 type Mode = "month" | "week" | "agenda";
 const AGENDA_DAYS = 14;
@@ -71,6 +76,7 @@ export default function CalendarPage() {
   const [allEvents, setEvents] = useState<EventOccurrence[]>([]);
   const [allTodos, setTodos] = useState<ListItem[]>([]);
   const [editing, setEditing] = useState<Parameters<typeof EventForm>[0]["initial"] | null>(null);
+  const [diorama, setDiorama] = useState(false);
 
   const from = mode === "month" ? startOfMonthGrid(anchor) : mode === "week" ? startOfWeek(anchor) : startOfDay(anchor);
   const span = mode === "month" ? MONTH_CELLS : mode === "week" ? 7 : AGENDA_DAYS;
@@ -169,6 +175,10 @@ export default function CalendarPage() {
             {m === "month" ? t("Month") : m === "week" ? t("Week") : t("Agenda")}
           </button>
         ))}
+        <button onClick={() => setDiorama(true)} className="chip-toggle ml-auto" aria-label={t("3D week")}>
+          <Box size={14} />
+          3D
+        </button>
       </div>
 
       <div className="flex items-center justify-between gap-2">
@@ -297,6 +307,8 @@ export default function CalendarPage() {
           {mode === "week" && events.length === 0 && todosByDay.size === 0 && !focus && <p className="card text-sm text-muted">{t("Nothing planned this week.")}</p>}
         </div>
       )}
+
+      {diorama && <WeekDiorama onClose={() => setDiorama(false)} />}
 
       <Sheet open={!!editing} onClose={() => setEditing(null)} title={editing?.id ? t("Edit event") : t("New event")}>
         {editing && (
