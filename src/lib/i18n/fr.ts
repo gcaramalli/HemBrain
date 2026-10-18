@@ -913,6 +913,7 @@ export const fr: Record<string, string> = {
   "Each person has their colour; ink = we've both been there.": "Chacun sa couleur ; encre = on y est allés tous les deux.",
   "{n} countries": "{n} pays",
   "Paste the list of countries you've been to, in any language.": "Colle la liste des pays où tu es allé, dans n'importe quelle langue.",
+  "Globe": "Globe",
   "World": "Monde",
   "Europe": "Europe",
   "Americas": "Amériques",
