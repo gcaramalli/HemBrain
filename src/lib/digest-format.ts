@@ -84,3 +84,28 @@ ${nudge ? `<div style="margin:8px 0 16px;padding:16px;border-radius:14px;backgro
 
   return { subject, html, text };
 }
+
+// A whole draft pasted at once (Hembrain admin → News → New draft): one "# en" /
+// "# fr" / "# sv" section per language, each with "## subject", "## body" and
+// "## nudge" parts. Anything missing stays empty; English falls back where a
+// language has no text.
+export function parseDraft(text: string) {
+  const out = { subject: {} as Localized, body: {} as Localized, nudge: {} as Localized };
+  let lang: Locale | null = null;
+  let field: keyof typeof out | null = null;
+  const parts: Record<string, string[]> = {};
+  for (const line of text.split("\n")) {
+    const l = /^#\s+(en|fr|sv)\s*$/i.exec(line);
+    const f = /^##\s+(subject|body|nudge)\s*$/i.exec(line);
+    if (l) {
+      lang = l[1].toLowerCase() as Locale;
+      field = null;
+    } else if (f && lang) field = f[1].toLowerCase() as keyof typeof out;
+    else if (lang && field) (parts[`${lang}.${field}`] ??= []).push(line);
+  }
+  for (const [k, lines] of Object.entries(parts)) {
+    const [lg, fd] = k.split(".") as [Locale, keyof typeof out];
+    out[fd][lg] = lines.join("\n").trim();
+  }
+  return out;
+}
