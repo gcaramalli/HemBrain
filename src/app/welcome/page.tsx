@@ -3,10 +3,11 @@ import { ThinkingDots } from "@/components/thinking-dots";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { ArrowRight, BellRing, Globe, HeartHandshake, KeyRound, Languages, Lock, Moon, Smartphone, UsersRound } from "lucide-react";
-import { isLocale, LOCALES, translator, type Locale } from "@/lib/i18n";
+import { BCP47, isLocale, LOCALES, translator, type Locale } from "@/lib/i18n";
 import { MODULES, type ModuleId } from "@/lib/modules";
 import { ModuleIcon } from "@/components/module-icon";
 import { ALEX, Chat, DemoMap, Dot, LEO, Phone, SAM, SleepBars, WeekStrip } from "./demos";
+import { Week3D } from "./week-3d";
 
 // Public landing page: what Hembrain is and how to start a family.
 // Signed-out visitors to "/" land here (see src/proxy.ts). There is no
@@ -185,7 +186,7 @@ export default async function WelcomePage({ searchParams }: PageProps<"/welcome"
 
           <div className="grid gap-4 md:grid-cols-6">
             <Tile module="calendar" className="md:col-span-4" title={t("Calendar")} body={t("Everyone in their own colour. Repeating events, to-dos with a due date, birthdays and the dates you celebrate every year.")}>
-              <WeekStrip locale={locale} />
+              <Week3D bcp47={BCP47[locale]} fallback={<WeekStrip locale={locale} />} />
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 <MiniEvent time="09:30" title={t("Swimming lessons")} p={LEO} />
                 <MiniEvent time="18:00" title={t("Dinner at Anna's")} p={SAM} />
