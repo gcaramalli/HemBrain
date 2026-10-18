@@ -22,14 +22,13 @@ export type SceneDay = {
 export type WeekScene = { dispose: () => void; labels: () => { x: number; y: number; visible: boolean }[] };
 
 const LOOP = 10; // seconds
-const CELL = 5.1; // row pitch
-const TILE = 4.8;
-const STREET = 1.2;
-const SLAB_W = 2 * TILE + STREET + 0.9;
-const SLAB_D = 4 * CELL + 0.6;
-// Plot n of the 2 × 4 grid, in reading order from the back left (n = 7: the house).
-const cellPos = (n: number) => new THREE.Vector3((n % 2 ? 1 : -1) * (TILE + STREET) / 2, 0, -SLAB_D / 2 + 0.3 + (Math.floor(n / 2) + 0.5) * CELL);
-const AZ = 0.18; // the camera's usual angle: nearly straight on, slightly from the right
+const R = 5.9; // ring of days
+const TILE = 3.9;
+const ROAD_R = 9.3;
+const SLAB_R = 10.2;
+// Day i on the ring: today in front, then round clockwise (seen from above).
+const dayAngle = (i: number) => Math.PI / 2 - (i / 7) * Math.PI * 2;
+const AZ = 0; // the camera's usual angle: today straight in front
 const PALETTE = {
   ground: "#f4f2ed",
   tile: "#ffffff",
@@ -122,18 +121,22 @@ export function createWeekScene(el: HTMLElement, days: SceneDay[], onPick: (day:
     return obj;
   };
 
-  // The slab, floating: two columns of four plots with a street between them.
-  // The days read like a page (today top left), the house is the last plot.
-  const slab = mesh(box(SLAB_W, 0.9, SLAB_D, 0.45), PALETTE.ground, 0, -0.45, 0);
-  pop(slab, 0);
-  const under = mesh(box(SLAB_W - 0.9, 0.5, SLAB_D - 0.9, 0.25), "#e4e0d7", 0, -1.05, 0);
-  pop(under, 0.03);
-  const street = mesh(box(STREET, 0.06, SLAB_D - 0.6, 0.03), PALETTE.road, 0, 0.03, 0);
-  street.castShadow = false;
-  pop(street, 0.05);
-  for (let i = 0; i < 9; i++) pop(mesh(box(0.08, 0.065, 0.7, 0.02), PALETTE.tile, 0, 0.035, -SLAB_D / 2 + 1.4 + i * 2.4), 0.08 + i * 0.01);
+  // The slab, floating: a round plate with the house in the middle, the seven
+  // days in a ring around it (today in front) and a road round the edge.
+  const plate = (r: number, h: number, color: string, y: number) => {
+    const g = new THREE.CylinderGeometry(r, r, h, 96);
+    geos.push(g);
+    return mesh(g, color, 0, y, 0);
+  };
+  pop(plate(SLAB_R, 0.9, PALETTE.ground, -0.45), 0);
+  pop(plate(SLAB_R - 0.5, 0.5, "#e4e0d7", -1.05), 0.03);
+  const ring = new THREE.RingGeometry(ROAD_R - 0.45, ROAD_R + 0.45, 96);
+  ring.rotateX(-Math.PI / 2);
+  geos.push(ring);
+  const road = mesh(ring, PALETTE.road, 0, 0.012, 0);
+  road.castShadow = false;
+  pop(road, 0.05);
 
-  // Cars up and down the street; they shrink away at the ends of the slab.
   const car = (body: string) => {
     const g = new THREE.Group();
     const inner = new THREE.Group();
@@ -144,16 +147,12 @@ export function createWeekScene(el: HTMLElement, days: SceneDay[], onPick: (day:
     return { g, inner };
   };
   const cars = [
-    { ...car(PALETTE.teal), dir: 1, lane: 0.25, phase: 0 },
-    { ...car(PALETTE.blue), dir: -1, lane: -0.25, phase: 0.45 },
-    { ...car(PALETTE.orange), dir: 1, lane: 0.25, phase: 0.62 },
+    { ...car(PALETTE.teal), dir: 1, lane: ROAD_R + 0.2, phase: 0 },
+    { ...car(PALETTE.blue), dir: -1, lane: ROAD_R - 0.2, phase: 0.45 },
   ];
   cars.forEach((c, i) => pop(c.g, 0.6 + i * 0.05));
 
-  // The house, on the last plot: walls with a window grid, a gable roof, a chimney that smokes.
-  const homeAt = cellPos(7);
-  const plot = mesh(box(TILE, 0.26, TILE, 0.14), "#d7eedc", homeAt.x, 0.13, homeAt.z);
-  pop(plot, 0.2);
+  // The house in the middle: walls with a window grid, a gable roof, a chimney that smokes.
   const house = new THREE.Group();
   house.add(mesh(box(2.6, 1.7, 2.1, 0.12), PALETTE.blue, 0, 0.85, 0));
   for (const [sx, sy] of [[-0.75, 1.15], [0.75, 1.15], [-0.75, 0.55], [0.75, 0.55]]) house.add(mesh(box(0.42, 0.36, 0.06, 0.04), PALETTE.glass, sx, sy, 1.06));
@@ -164,7 +163,7 @@ export function createWeekScene(el: HTMLElement, days: SceneDay[], onPick: (day:
     house.add(roof);
   }
   house.add(mesh(box(0.3, 0.6, 0.3, 0.06), PALETTE.teal, 0.7, 2.3, -0.5));
-  house.position.set(homeAt.x - 0.3, 0.26, homeAt.z - 0.2);
+  house.scale.setScalar(0.8);
   pop(house, 0.25);
   const smoke = Array.from({ length: 4 }, () => {
     const s = mesh(sphereGeo, "#ffffff", 0.7, 2.7, -0.5);
@@ -183,25 +182,27 @@ export function createWeekScene(el: HTMLElement, days: SceneDay[], onPick: (day:
     trees.push(g);
     return g;
   };
-  for (const [x, z, k] of [[1.3, 1.6, 0.9], [2.0, 1.75, 0.7]]) pop(tree(homeAt.x + x, homeAt.z + z, k), 0.4);
+  // Trees between the days, out by the road.
+  for (let i = 0; i < 7; i++) {
+    const a = dayAngle(i + 0.5);
+    pop(tree(Math.cos(a) * (R + 1.2), Math.sin(a) * (R + 1.2), i % 2 ? 0.8 : 1), 0.35 + i * 0.03);
+  }
   const lamps: THREE.Mesh[] = [];
-  for (let r = 0; r < 4; r++) {
-    for (const side of [-1, 1]) {
-      const g = new THREE.Group();
-      g.position.set(side * (STREET / 2 + 0.12), 0, -SLAB_D / 2 + 0.6 + (r + 0.5) * CELL);
-      g.add(mesh(box(0.08, 1.1, 0.08, 0.03), PALETTE.dark, 0, 0.55, 0));
-      const head = mesh(box(0.24, 0.12, 0.24, 0.05), "#fff3d6", -side * 0.08, 1.15, 0, "#ffd9a0");
-      lamps.push(head);
-      g.add(head);
-      pop(g, 0.45 + r * 0.03);
-    }
+  for (const [x, z] of [[-1.5, 1.4], [1.5, 1.4], [0, -1.7]]) {
+    const g = new THREE.Group();
+    g.position.set(x, 0, z);
+    g.add(mesh(box(0.09, 1.3, 0.09, 0.03), PALETTE.dark, 0, 0.65, 0));
+    const head = mesh(box(0.26, 0.14, 0.26, 0.05), "#fff3d6", 0, 1.35, 0, "#ffd9a0");
+    lamps.push(head);
+    g.add(head);
+    pop(g, 0.45);
   }
 
   // The seven days.
-  const tilePos = cellPos;
+  const tilePos = (i: number) => new THREE.Vector3(Math.cos(dayAngle(i)) * R, 0, Math.sin(dayAngle(i)) * R);
   const beacons: THREE.Mesh[] = [];
   const vignettes: Vignette[] = [];
-  const kit = { box, sphere: sphereGeo, mesh };
+  const kit = { box, sphere: sphereGeo, mesh, mat };
   days.forEach((d, i) => {
     const g = new THREE.Group();
     g.position.copy(tilePos(i));
@@ -210,8 +211,8 @@ export function createWeekScene(el: HTMLElement, days: SceneDay[], onPick: (day:
     const top = 0.29 + (i === 0 ? 0.04 : 0);
     // The day's activities as little scenes; bigger when there are fewer.
     const acts = d.acts.slice(0, 3);
-    const layout = [[[0, 0]], [[-1.2, 0.1], [1.2, -0.1]], [[-1.2, -0.85], [1.2, -0.85], [0, 1.0]]][acts.length - 1] ?? [];
-    const size = [3.8, 2.25, 1.85][acts.length - 1];
+    const layout = [[[0, 0]], [[-0.95, 0.1], [0.95, -0.1]], [[-0.95, -0.7], [0.95, -0.7], [0, 0.8]]][acts.length - 1] ?? [];
+    const size = [3.2, 1.8, 1.5][acts.length - 1];
     acts.forEach((a, j) => {
       const v = buildVignette(kit, a.kind, a.colors, i + j * 0.37);
       v.group.position.set(layout[j][0], top, layout[j][1]);
@@ -249,7 +250,9 @@ export function createWeekScene(el: HTMLElement, days: SceneDay[], onPick: (day:
     downAt = null;
     const r = el.getBoundingClientRect();
     ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
+    // A day: zoom on it (again: back out). Anywhere else: back out.
     const day = ray.intersectObjects(world.children, true)[0]?.object.userData.day;
+    focused = day === undefined || day === focused ? null : day;
     if (day !== undefined) onPick(day);
   };
   el.addEventListener("pointerdown", down);
@@ -266,9 +269,9 @@ export function createWeekScene(el: HTMLElement, days: SceneDay[], onPick: (day:
     composer.setSize(w, h);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    // Wide enough for the slab, and short enough to leave room for the cards above and below.
+    // Wide enough for the plate, and short enough to leave room for the cards above and below.
     const tanV = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-    fit = Math.max((SLAB_W / 2 + 2.2) / (tanV * camera.aspect), 17 / tanV);
+    fit = Math.max((SLAB_R + 0.3) / (tanV * camera.aspect), 12 / tanV);
   };
   const ro = new ResizeObserver(resize);
   ro.observe(el);
@@ -277,16 +280,22 @@ export function createWeekScene(el: HTMLElement, days: SceneDay[], onPick: (day:
   const label = new THREE.Vector3();
   const labels = () =>
     days.map((_, i) => {
-      label.copy(tilePos(i)).add(new THREE.Vector3(-TILE / 2 + 0.75, 0.3, -TILE / 2 + 0.3)).applyMatrix4(world.matrixWorld).project(camera);
+      label.copy(tilePos(i)).multiplyScalar((R + TILE / 2 + 0.1) / R).applyMatrix4(world.matrixWorld).project(camera);
       return { x: (label.x + 1) / 2, y: (1 - label.y) / 2, visible: label.z < 1 };
     });
 
   const start = performance.now();
+  let last = start;
+  let focused: number | null = null;
+  let zoom = 0;
+  const aim = new THREE.Vector3();
   let frame = 0;
   const tick = (now: number) => {
     frame = requestAnimationFrame(tick);
     if (document.hidden) return;
     const time = (now - start) / 1000;
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
     const t = still ? 2 : time;
     const loop = ((t - 1.2) % LOOP + LOOP) % LOOP; // the living part starts once the world is built
 
@@ -298,20 +307,22 @@ export function createWeekScene(el: HTMLElement, days: SceneDay[], onPick: (day:
 
     // Camera: a slow eased sway with a gentle push-in, seamless over the loop.
     const phase = (loop / LOOP) * Math.PI * 2;
-    const az = still ? AZ : AZ + 0.1 * Math.sin(phase);
+    const az = still ? AZ : AZ + 0.3 * Math.sin(phase) * (1 - zoom);
     const intro = still ? 0 : 1 - smooth(clamp01(t / 1.4));
-    const dist = fit * (1.02 - 0.05 * (0.5 - 0.5 * Math.cos(phase)) + 0.25 * intro);
-    const el2 = THREE.MathUtils.degToRad(46 + 10 * intro);
-    camera.position.set(Math.sin(az) * Math.cos(el2) * dist, Math.sin(el2) * dist, Math.cos(az) * Math.cos(el2) * dist);
-    camera.lookAt(0, -0.2, -0.6);
+    // Zoom: ease towards the tapped day, and back out.
+    zoom += ((focused === null ? 0 : 1) - zoom) * (1 - Math.exp(-dt * 3.5));
+    if (focused !== null) aim.copy(tilePos(focused));
+    const look = new THREE.Vector3(0, -0.2, -0.3).lerp(aim, smooth(zoom));
+    const dist = fit * (1.02 - 0.05 * (0.5 - 0.5 * Math.cos(phase)) + 0.25 * intro) * (1 - 0.66 * smooth(zoom));
+    const el2 = THREE.MathUtils.degToRad(50 + 10 * intro - 6 * zoom);
+    camera.position.set(look.x + Math.sin(az) * Math.cos(el2) * dist, look.y + Math.sin(el2) * dist, look.z + Math.cos(az) * Math.cos(el2) * dist);
+    camera.lookAt(look);
 
     if (!still) {
       for (const c of cars) {
-        const u = ((((c.phase + (c.dir * loop) / LOOP) % 1) + 1) % 1);
-        const span = SLAB_D - 1.2;
-        c.g.position.set(c.lane, 0, (c.dir > 0 ? u - 0.5 : 0.5 - u) * span);
-        c.g.rotation.y = c.dir > 0 ? 0 : Math.PI;
-        c.inner.scale.setScalar(Math.min(1, u / 0.06, (1 - u) / 0.06)); // in and out at the ends
+        const a = (c.phase + (c.dir * loop) / LOOP) * Math.PI * 2;
+        c.g.position.set(Math.cos(a) * c.lane, 0, Math.sin(a) * c.lane);
+        c.g.rotation.y = -a + (c.dir > 0 ? Math.PI : 0);
       }
       trees.forEach((tr, i) => (tr.rotation.z = Math.sin(time * 1.3 + i) * 0.035));
       smoke.forEach((s, i) => {
@@ -337,6 +348,7 @@ export function createWeekScene(el: HTMLElement, days: SceneDay[], onPick: (day:
       ro.disconnect();
       el.removeEventListener("pointerdown", down);
       el.removeEventListener("pointerup", up);
+      world.traverse((o) => (o as THREE.Mesh).geometry?.dispose());
       geos.forEach((g) => g.dispose());
       mats.forEach((m) => m.dispose());
       gtao.dispose();

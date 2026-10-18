@@ -1,34 +1,43 @@
 // The little scenes standing on each day of the 3D week (`week-scene.ts`): one
 // per activity, guessed from its title in English, French or Swedish — a
 // dinner is a table with its people around it, swimming a pool, padel a court…
+// A title we don't recognise gets a question mark, until it gets its own scene.
 // Each fits in about 1.1 × 1.1 units around its origin, stands on y = 0, and
 // moves a little on its own (`update(time)`).
 import * as THREE from "three";
 
-export type ActKind = "meal" | "swim" | "racket" | "sport" | "health" | "party" | "travel" | "show" | "meeting" | "shop" | "outing" | "repair" | "other";
+export type ActKind =
+  | "meal" | "drinks" | "swim" | "racket" | "sport" | "health" | "party" | "family" | "travel" | "show"
+  | "lesson" | "work" | "shop" | "outing" | "cleaning" | "repair" | "unknown";
 
-// First match wins, so the order matters ("courses" is shopping before "course" is running).
+// First match wins, so the order matters ("courses" is shopping before "course" is running,
+// "cours de tennis" is tennis before "cours" is a lesson, "visite médicale" is health before a visit).
 const KINDS: [ActKind, RegExp][] = [
-  ["meal", /(d[iî]n(er|ner)|after-?work|drinks|\bbar\b|lunch|d[ée]jeuner|d[ée]j\b|brunch|breakfast|petit[- ]?d[ée]j|frukost|middag|resto|restaurant|fika|caf[ée]|coffee|ap[ée]ro|bbq|barbecue|grill|pizza|souper|go[uû]ter)/i],
+  ["drinks", /(after-?work|\baw\b|drinks|\bbar\b|ap[ée]ro|pub\b|cocktail|wine|d[ée]gustation|vinprovning|[öo]l\b|beer)/i],
+  ["meal", /(d[iî]n(er|ner)|lunch|d[ée]jeuner|d[ée]j\b|brunch|breakfast|petit[- ]?d[ée]j|frukost|middag|resto|restaurant|fika|caf[ée]|coffee|bbq|barbecue|grill|pizza|souper|go[uû]ter|raclette|fondue)/i],
   ["swim", /(swim|nag(e|eur|euse)|natation|piscine|pool|sim(ning|skola|hall)|badhus)/i],
   ["racket", /(padel|tennis|badminton|squash|ping[- ]?pong)/i],
   ["shop", /(courses|shopping|handla|ikea|march[ée]|market|achats?\b|soldes)/i],
-  ["sport", /(gym|yoga|\brun|jogg|course [àa] pied|foot|fotboll|sport|tr[äa]ning|workout|pilates|v[ée]lo|cykel|\bski|match|crossfit|boxe|danse|dance|klättr|escalade|climb)/i],
-  ["health", /(m[ée]decin|docteur|doctor|dentist|tandl[äa]kare|l[äa]kare|bvc|vaccin|kin[ée]|physio|ost[ée]o|hospital|h[ôo]pital|sjukhus|v[åa]rdcentral|p[ée]diatr|pharma|apotek|opticien|optiker|check-?up)/i],
-  ["party", /(anniv|birthday|f[öo]delsedag|kalas|party|f[êe]te|soir[ée]e|mariage|wedding|br[öo]llop|bapt[êe]me|celebrat|jubil)/i],
-  ["travel", /(flight|\bvol\b|avion|flyg|train\b|t[åa]g\b|airport|a[ée]roport|voyage|trip\b|\bresa\b|vacances|semester|holiday)/i],
+  ["sport", /(gym|yoga|\brun|jogg|course [àa] pied|foot|fotboll|sport|tr[äa]ning|workout|pilates|v[ée]lo|cykel|\bski|match|crossfit|boxe|danse|dance|klättr|escalade|climb|golf|hockey|basket|rugby|handball|judo|karat)/i],
+  ["health", /(m[ée]decin|docteur|doctor|dentist|tandl[äa]kare|l[äa]kare|bvc|vaccin|kin[ée]|physio|ost[ée]o|hospital|h[ôo]pital|sjukhus|v[åa]rdcentral|p[ée]diatr|pharma|apotek|opticien|optiker|check-?up|visite m[ée]dicale)/i],
+  ["party", /(anniv|birthday|f[öo]delsedag|kalas|party|f[êe]te|soir[ée]e|mariage|wedding|br[öo]llop|bapt[êe]me|celebrat|jubil|cr[ée]maill[èe]re|housewarming|\bfest)/i],
+  ["family", /(visite|visit|bes[öo]k|famille|family|familj|mamie|papy|mami\b|grand-?m[èe]re|grand-?p[èe]re|grands-parents|mormor|farmor|morfar|farfar|beaux-parents|belle-m[èe]re|beau-p[èe]re|sv[äa]rf[öo]r[äa]ldrar|cousin|kusin|oncle|tante|moster|faster|morbror|farbror)/i],
+  ["travel", /(flight|\bvol\b|avion|flyg|train\b|t[åa]g\b|airport|a[ée]roport|voyage|trip\b|\bresa\b|vacances|semester|holiday|ferry|f[äa]rja|h[ôo]tel|airbnb|valise|d[ée]part|week-?end [àa])/i],
   ["show", /(cin[ée]|movie|film|\bbio\b|th[ée][âa]tre|theater|teater|concert|konsert|spectacle|op[ée]ra|show)/i],
-  ["meeting", /(r[ée]union|meeting|m[öo]te|\bcall\b|entretien|interview|conf[ée]rence|\bwork\b|travail|jobb|bureau|office|[ée]cole|school|skola|parents|utvecklingssamtal)/i],
+  ["lesson", /(cours\b|lesson|class\b|lektion|kurs\b|le[çc]on|atelier|workshop|formation|training day|[ée]cole|school|skola|parents|utvecklingssamtal|piano|guitare|musique|solf[èe]ge|langue|spr[åa]k)/i],
+  ["work", /(r[ée]union|meeting|m[öo]te|\bcall\b|entretien|interview|conf[ée]rence|\bwork\b|travail|jobb|bureau|office|kontor|s[ée]minaire|offsite|kick-?off|boss|client|kund)/i],
+  ["cleaning", /(m[ée]nage|cleaning|cleaner|st[äa]d|nettoyage|lessive|repassage)/i],
   ["outing", /(zoo|parc|park|mus[ée]e|museum|picnic|pique|plage|beach|strand|balade|promenade|walk\b|sortie|lekplats|playground|aquarium|ferme|skansen|utflykt)/i],
-  ["repair", /(plomb|plumber|r[öo]rmokare|[ée]lectric|repair|r[ée]par|artisan|hantverk|install|livraison|delivery|d[ée]m[ée]nag|moving|m[ée]nage|cleaning|st[äa]d|garage|pneu|d[äa]ck|bilprovning)/i],
+  ["repair", /(plomb|plumber|r[öo]rmokare|[ée]lectric|repair|r[ée]par|artisan|hantverk|install|livraison|delivery|d[ée]m[ée]nag|moving|garage|pneu|d[äa]ck|bilprovning)/i],
 ];
 
 export function actKind(title: string, badge?: string): ActKind {
   if (badge) return "party"; // our anniversary, a family birthday
-  return KINDS.find(([, re]) => re.test(title))?.[0] ?? "other";
+  return KINDS.find(([, re]) => re.test(title))?.[0] ?? "unknown"; // we build the missing ones as they come
 }
 
 export type Kit = {
+  mat: (color: string, emissive?: string) => THREE.MeshStandardMaterial;
   box: (w: number, h: number, d: number, r?: number) => THREE.BufferGeometry;
   sphere: THREE.BufferGeometry;
   mesh: (g: THREE.BufferGeometry, color: string, x?: number, y?: number, z?: number, emissive?: string) => THREE.Mesh;
@@ -67,7 +76,7 @@ const face = (g: THREE.Object3D, x: number, z: number) => (g.rotation.y = Math.a
 
 export function buildVignette(kit: Kit, kind: ActKind, colors: string[], seed: number): Vignette {
   const g = new THREE.Group();
-  const { box, sphere, mesh } = kit;
+  const { box, sphere, mesh, mat } = kit;
   const people = colors.length ? colors : [C.guest];
   let update: (t: number) => void = () => {};
 
@@ -214,20 +223,143 @@ export function buildVignette(kit: Kit, kind: ActKind, colors: string[], seed: n
       update = (t) => (glow.emissiveIntensity = 0.5 + 0.35 * Math.abs(Math.sin(t * 2.3 + seed)));
       break;
     }
-    case "meeting": {
-      g.add(mesh(box(0.7, 0.05, 0.42, 0.02), C.white, 0, 0.32, 0));
-      for (const x of [-0.3, 0.3]) g.add(mesh(box(0.05, 0.3, 0.36, 0.02), C.white, x, 0.15, 0));
-      g.add(mesh(box(0.28, 0.02, 0.18, 0.01), C.dark, 0, 0.355, 0.05));
-      const screen = mesh(box(0.28, 0.18, 0.02, 0.01), C.dark, 0, 0.45, -0.04, C.sky);
-      g.add(screen);
-      const talkers = people.slice(0, 3).map((c, i) => {
-        const x = -0.22 + i * 0.22;
-        const p = person(kit, c, x, 0.42, true);
-        face(p, x, 0);
+    case "work": {
+      // An office block with a window grid, someone heading in with a briefcase.
+      g.add(mesh(box(0.62, 0.95, 0.5, 0.05), "#9fb4d8", 0, 0.475, -0.2));
+      const lit: THREE.Mesh[] = [];
+      for (let r = 0; r < 3; r++)
+        for (let c = 0; c < 3; c++) {
+          const w = mesh(box(0.14, 0.16, 0.02, 0.01), C.glass, -0.18 + c * 0.18, 0.3 + r * 0.24, 0.06);
+          g.add(w);
+          lit.push(w);
+        }
+      g.add(mesh(box(0.2, 0.26, 0.02, 0.01), C.blue, 0, 0.13, 0.06));
+      const workers = people.slice(0, 2).map((c, i) => {
+        const p = person(kit, c, -0.25 + i * 0.5, 0.35);
+        p.add(mesh(box(0.12, 0.09, 0.04, 0.015), C.dark, 0.13, 0.12, 0));
         g.add(p);
         return p;
       });
-      update = (t) => talkers.forEach((p, i) => (p.rotation.z = 0.06 * Math.sin(t * 2.5 + i * 1.3 + seed)));
+      const on = mat(C.glass, "#ffe9a8");
+      const off = lit[0].material;
+      update = (t) => {
+        const k = Math.floor(t * 1.5 + seed * 7) % lit.length;
+        lit.forEach((w, i) => (w.material = i === k || i === (k + 4) % lit.length ? on : off));
+        workers.forEach((p, i) => (p.position.z = 0.35 + 0.05 * Math.sin(t * 2 + i * 2)));
+      };
+      break;
+    }
+    case "lesson": {
+      // A blackboard, a teacher, and the pupils at their desks.
+      g.add(mesh(box(0.7, 0.42, 0.04, 0.02), "#2f5d4a", 0, 0.5, -0.38));
+      g.add(mesh(box(0.74, 0.04, 0.06, 0.01), C.wood, 0, 0.27, -0.36));
+      for (const x of [-0.3, 0.3]) g.add(mesh(box(0.04, 0.3, 0.04, 0.01), C.wood, x, 0.15, -0.38));
+      const chalk = mesh(box(0.3, 0.02, 0.01, 0.005), C.white, -0.1, 0.55, -0.355);
+      g.add(chalk);
+      const teacher = person(kit, C.guest, 0.42, -0.25);
+      face(teacher, 0, 0.3);
+      g.add(teacher);
+      const pupils = people.slice(0, 3).map((c, i) => {
+        const x = -0.3 + i * 0.3;
+        g.add(mesh(box(0.24, 0.03, 0.16, 0.01), C.wood, x, 0.26, 0.12));
+        const p = person(kit, c, x, 0.3, true);
+        face(p, x, -1);
+        g.add(p);
+        return p;
+      });
+      update = (t) => {
+        chalk.scale.x = 0.3 + 0.7 * ((t * 0.4 + seed) % 1);
+        teacher.rotation.y = -0.8 + 0.4 * Math.sin(t * 1.2 + seed);
+        pupils.forEach((p, i) => (p.children[1].position.y = 0.46 + 0.015 * Math.sin(t * 3 + i)));
+      };
+      break;
+    }
+    case "drinks": {
+      // A high bar table, stools, glasses that clink now and then.
+      g.add(mesh(box(0.5, 0.05, 0.5, 0.03), C.wood, 0, 0.62, 0));
+      g.add(mesh(box(0.07, 0.6, 0.07, 0.02), C.dark, 0, 0.3, 0));
+      g.add(mesh(box(0.32, 0.03, 0.32, 0.01), C.dark, 0, 0.015, 0));
+      const guests = (people.length < 2 ? [...people, C.guest] : people.slice(0, 3)).map((c, i, all) => {
+        const a = (i / all.length) * Math.PI * 2 + 0.6;
+        const p = person(kit, c, Math.sin(a) * 0.42, Math.cos(a) * 0.42);
+        p.scale.setScalar(1.25);
+        face(p, 0, 0);
+        g.add(p);
+        return p;
+      });
+      const glasses = [0, 1, 2].map((i) => {
+        const a = (i / 3) * Math.PI * 2;
+        const gl = mesh(box(0.06, 0.12, 0.06, 0.02), "#f2b84b", Math.sin(a) * 0.12, 0.71, Math.cos(a) * 0.12);
+        g.add(gl);
+        return gl;
+      });
+      update = (t) => {
+        const cheers = Math.max(0, Math.sin(t * 1.3 + seed)) ** 6; // every few seconds
+        glasses.forEach((gl, i) => (gl.position.y = 0.71 + cheers * 0.1 + 0.01 * Math.sin(t * 4 + i)));
+        guests.forEach((p, i) => (p.rotation.x = 0.12 * cheers + 0.02 * Math.sin(t * 2 + i)));
+      };
+      break;
+    }
+    case "family": {
+      // Family visiting: their little house, a suitcase, everyone together, a heart above.
+      g.add(mesh(box(0.5, 0.4, 0.4, 0.04), C.white, -0.28, 0.2, -0.25));
+      for (const s of [-1, 1]) {
+        const roof = mesh(box(0.34, 0.05, 0.46, 0.02), C.blue, -0.28 + s * 0.12, 0.48, -0.25);
+        roof.rotation.z = -s * 0.6;
+        g.add(roof);
+      }
+      g.add(mesh(box(0.12, 0.2, 0.02, 0.01), C.teal, -0.28, 0.1, -0.04));
+      const crowd = [C.guest, C.guest, ...people.slice(0, 2)].map((c, i) => {
+        const p = person(kit, c, -0.3 + i * 0.22, 0.25);
+        g.add(p);
+        return p;
+      });
+      g.add(mesh(box(0.14, 0.18, 0.08, 0.03), C.teal, -0.5, 0.09, 0.32));
+      const heart = new THREE.Group();
+      for (const s of [-1, 1]) {
+        const lobe = mesh(sphere, "#ec5f8f", s * 0.045, 0, 0);
+        lobe.scale.setScalar(0.06);
+        heart.add(lobe);
+      }
+      const tip = mesh(box(0.09, 0.09, 0.05, 0.02), "#ec5f8f", 0, -0.045, 0);
+      tip.rotation.z = Math.PI / 4;
+      heart.add(tip);
+      heart.position.set(0.05, 0.75, 0.25);
+      g.add(heart);
+      update = (t) => {
+        heart.position.y = 0.72 + 0.05 * Math.sin(t * 2 + seed);
+        heart.scale.setScalar(1 + 0.12 * Math.max(0, Math.sin(t * 4 + seed)));
+        crowd.forEach((p, i) => (p.position.y = Math.abs(Math.sin(t * 3 + i * 0.8)) * 0.04));
+      };
+      break;
+    }
+    case "cleaning": {
+      // Someone mopping, a bucket, soap bubbles.
+      g.add(mesh(box(0.9, 0.02, 0.7, 0.01), "#e8f4f8", 0, 0.01, 0));
+      g.add(mesh(box(0.18, 0.18, 0.18, 0.05), C.sky, 0.3, 0.09, -0.2));
+      const cleaner = person(kit, people[0], -0.05, 0.05);
+      const mop = new THREE.Group();
+      mop.add(mesh(box(0.025, 0.5, 0.025, 0.01), C.wood, 0, 0.25, 0), mesh(box(0.16, 0.04, 0.08, 0.02), C.teal, 0, 0.02, 0));
+      mop.position.set(0.12, 0, 0.18);
+      mop.rotation.x = 0.35;
+      g.add(cleaner, mop);
+      const bubbles = [0, 1, 2, 3].map(() => {
+        const b = mesh(sphere, C.white, 0.3, 0.2, -0.2);
+        b.castShadow = false;
+        g.add(b);
+        return b;
+      });
+      update = (t) => {
+        const x = 0.15 * Math.sin(t * 2.2 + seed);
+        mop.position.x = 0.12 + x;
+        mop.rotation.z = -x;
+        cleaner.position.x = -0.05 + x * 0.4;
+        bubbles.forEach((b, i) => {
+          const u = (t * 0.5 + i / 4 + seed) % 1;
+          b.position.set(0.3 + 0.1 * Math.sin(u * 9 + i), 0.2 + u * 0.6, -0.2);
+          b.scale.setScalar(0.03 + 0.03 * Math.sin(u * Math.PI));
+        });
+      };
       break;
     }
     case "shop": {
@@ -281,18 +413,21 @@ export function buildVignette(kit: Kit, kind: ActKind, colors: string[], seed: n
       break;
     }
     default: {
-      // A map pin in the colour of whoever goes, with them standing by it.
-      const pin = new THREE.Group();
-      const head = mesh(sphere, people[0], 0, 0.62, 0);
-      head.scale.setScalar(0.17);
-      const dot = mesh(sphere, C.white, 0, 0.62, 0.15);
-      dot.scale.setScalar(0.06);
-      pin.add(head, dot, mesh(box(0.05, 0.4, 0.05, 0.02), C.dark, 0, 0.25, 0));
-      g.add(pin);
-      people.slice(0, 2).forEach((c, i) => g.add(person(kit, c, -0.3 + i * 0.6, 0.25)));
+      // Not recognised yet: a question mark (made of shapes, no text) by whoever goes.
+      const q = new THREE.Group();
+      const hook = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.055, 12, 32, Math.PI * 1.45), mat(people[0] === C.guest ? C.dark : people[0]));
+      hook.rotation.z = -Math.PI * 0.45;
+      hook.position.y = 0.72;
+      hook.castShadow = true;
+      q.add(hook, mesh(box(0.11, 0.17, 0.11, 0.05), people[0] === C.guest ? C.dark : people[0], 0, 0.45, 0));
+      const dot = mesh(sphere, people[0] === C.guest ? C.dark : people[0], 0, 0.22, 0);
+      dot.scale.setScalar(0.065);
+      q.add(dot);
+      g.add(q);
+      people.slice(0, 2).forEach((c, i) => g.add(person(kit, c, -0.35 + i * 0.7, 0.2)));
       update = (t) => {
-        pin.position.y = 0.05 * Math.sin(t * 2 + seed);
-        pin.rotation.y = 0.5 * Math.sin(t * 0.8 + seed);
+        q.position.y = 0.05 * Math.sin(t * 2 + seed);
+        q.rotation.y = 0.6 * Math.sin(t * 0.8 + seed);
       };
     }
   }
