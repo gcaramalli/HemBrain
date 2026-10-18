@@ -16,7 +16,7 @@ const C = { ...PALETTE, white: "#ffffff", ball: "#e9ef5a" };
 
 const face = (g: THREE.Object3D, x: number, z: number) => (g.rotation.y = Math.atan2(x - g.position.x, z - g.position.z));
 
-export function buildVignette(kit: Kit, kind: ActKind, colors: string[], seed: number): Vignette {
+export function buildVignette(kit: Kit, kind: ActKind, colors: string[], seed: number, guests = false): Vignette {
   const g = new THREE.Group();
   const { box, sphere, mesh, mat } = kit;
   const people = colors.length ? colors : [C.guest];
@@ -24,19 +24,26 @@ export function buildVignette(kit: Kit, kind: ActKind, colors: string[], seed: n
 
   switch (kind) {
     case "meal": {
-      // A table, plates, and four people around it.
+      // A table for four. Only who is really there sits at it, in their colours, on the far
+      // side facing the camera ("Jenny" alone vs "Jenny and Guillaume"); the other seats stay
+      // empty chairs, unless the title says others join us (grey guests), or we don't know who
+      // eats (a full table of guests).
       g.add(mesh(box(0.72, 0.06, 0.48, 0.03), C.wood, 0, 0.36, 0));
       g.add(mesh(box(0.08, 0.33, 0.08, 0.02), C.wood, 0, 0.17, 0));
-      // Always four round the table, or two facing each other reads as a meeting: our people
-      // on the far side, facing the camera, guests fill the other seats.
-      const diners = [...people.slice(0, 4), C.guest, C.guest, C.guest, C.guest].slice(0, 4);
-      const seats = [[-0.2, -0.4], [0.2, -0.4], [-0.2, 0.4], [0.2, 0.4]];
-      const sitters = diners.map((c, i) => {
-        const p = person(kit, c, seats[i][0], seats[i][1], true);
-        face(p, seats[i][0], 0);
+      const ours = colors.slice(0, 4);
+      const diners: (string | null)[] = [...ours, ...Array(4).fill(guests || !ours.length ? C.guest : null)].slice(0, 4);
+      const seats = ours.length === 1 && !guests ? [[0, -0.4], [-0.2, 0.4], [0.2, 0.4], [-0.38, 0]] : [[-0.2, -0.4], [0.2, -0.4], [-0.2, 0.4], [0.2, 0.4]];
+      const sitters = diners.flatMap((c, i) => {
+        const [x, z] = seats[i];
+        if (!c) {
+          if (i < 3) g.add(mesh(box(0.2, 0.12, 0.2, 0.04), C.wood, x, 0.06, z)); // an empty chair
+          return [];
+        }
+        const p = person(kit, c, x, z, true);
+        face(p, x, 0);
         g.add(p);
-        g.add(mesh(box(0.15, 0.02, 0.15, 0.01), C.white, seats[i][0], 0.4, seats[i][1] * 0.45));
-        return p;
+        g.add(mesh(box(0.15, 0.02, 0.15, 0.01), C.white, x, 0.4, z * 0.45));
+        return [p];
       });
       g.add(mesh(box(0.16, 0.1, 0.16, 0.05), C.orange, 0, 0.44, 0)); // the dish
       const steam = mesh(sphere, C.white, 0, 0.6, 0);

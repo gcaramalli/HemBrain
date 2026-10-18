@@ -2,7 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { careTitle, usualTime } from "./care";
 import { addDays, dayKey, startOfDay } from "./dates";
-import { expand } from "./events";
+import { expand, forIds, involves } from "./events";
 import { BCP47, isLocale, translator, type Locale } from "./i18n";
 import { sendPush } from "@/lib/push";
 import type { CalendarEvent, CareAvailability, ListItem, Member } from "./types";
@@ -176,7 +176,7 @@ async function eventNotes(ctx: Ctx, row: Activity): Promise<Note[]> {
   for (const r of ctx.members.filter((m) => m.profile_id && m.id !== actor.id)) {
     const h = helpers(ctx, r);
     const t = h.t;
-    const concerns = (e: EventRow) => e.responsible_member_id === r.id || e.for_member_id === r.id || isKid(e.for_member_id) || (!e.responsible_member_id && !e.for_member_id);
+    const concerns = (e: EventRow) => involves(e, r.id) || isKid(e.for_member_id) || (!e.responsible_member_id && !e.for_member_id);
     // "Pick-up Charlie (Thu 15 Oct, 16:00)"
     // Mid-sentence, a drop-off / pick-up reads "Charlie's pick-up".
     const lbl = (e: EventRow) => {
@@ -201,7 +201,7 @@ async function eventNotes(ctx: Ctx, row: Activity): Promise<Note[]> {
         if (after.responsible_member_id === r.id) say.assigned(after, ox);
         else if (after.responsible_member_id === actor.id) say.going(after, ox);
       } else if (after.responsible_member_id === r.id) say.assigned(after, ox);
-      else if (after.for_member_id === r.id && soon(ox, 7 * 24)) note("added_you", t("{name} added something for you: {what}.", v(after, ox)), what(after, ox));
+      else if (forIds(after).includes(r.id) && soon(ox, 7 * 24)) note("added_you", t("{name} added something for you: {what}.", v(after, ox)), what(after, ox));
       else if (isKid(after.for_member_id)) {
         note("added_kid", t("{name} added something for {kid}: {what}.", { ...v(after, ox), kid: h.kid(after.for_member_id)!.name }), what(after, ox));
       } else if (!after.responsible_member_id && !after.for_member_id && dayKey(ox.occurrence_start) <= dayKey(addDays(ctx.now, 1))) {
@@ -215,7 +215,7 @@ async function eventNotes(ctx: Ctx, row: Activity): Promise<Note[]> {
       if (!ob) continue;
       if (before.care && before.responsible_member_id === actor.id) {
         if (!appCare) say.cant(before, ob);
-      } else if (before.responsible_member_id === r.id || before.for_member_id === r.id || (isKid(before.for_member_id) && !before.care) || (concerns(before) && near(ob))) {
+      } else if (involves(before, r.id) || (isKid(before.for_member_id) && !before.care) || (concerns(before) && near(ob))) {
         say.cancelled(before, ob);
       }
       continue;

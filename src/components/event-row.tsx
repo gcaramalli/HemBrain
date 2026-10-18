@@ -4,7 +4,7 @@ import { MapPin, Repeat } from "lucide-react";
 import { useFamily } from "./family-context";
 import { MemberBadge } from "./member-select";
 import { formatTime } from "@/lib/dates";
-import { occurrenceDays } from "@/lib/events";
+import { forIds, occurrenceDays } from "@/lib/events";
 import { careTitle } from "@/lib/care";
 import type { T } from "@/lib/i18n";
 import type { EventOccurrence } from "@/lib/types";
@@ -27,6 +27,7 @@ export function EventRow({ ev, day, onClick }: { ev: EventOccurrence; day?: stri
   const by = addedBy(ev.created_by);
   // Drop-offs / pick-ups made in the Kids tab have an English title: show it in my language.
   const kid = memberById(ev.for_member_id);
+  const others = forIds(ev).filter((id) => id !== ev.responsible_member_id);
   const title =
     ev.care && kid && ev.title === careTitle(ev.care, kid)
       ? ev.care === "dropoff" ? t("Drop-off {name}", { name: kid.name }) : t("Pick-up {name}", { name: kid.name })
@@ -48,10 +49,10 @@ export function EventRow({ ev, day, onClick }: { ev: EventOccurrence; day?: stri
         )}
         <div className="mt-1 flex flex-wrap items-center gap-1">
           <MemberBadge id={ev.responsible_member_id} />
-          {ev.for_member_id && ev.for_member_id !== ev.responsible_member_id && (
-            <span className="text-xs text-muted">{t("for")}</span>
-          )}
-          {ev.for_member_id !== ev.responsible_member_id && <MemberBadge id={ev.for_member_id} />}
+          {others.length > 0 && <span className="text-xs text-muted">{t("for")}</span>}
+          {others.map((id) => (
+            <MemberBadge key={id} id={id} />
+          ))}
           {by && <span className="text-xs text-muted">· {t("added by {name}", { name: by })}</span>}
         </div>
       </div>

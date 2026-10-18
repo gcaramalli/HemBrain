@@ -40,6 +40,13 @@ export function occurrenceDays(ev: EventOccurrence): string[] {
   return out;
 }
 
+// Who an event is about (empty = everyone). Rows from before migration 0031 only have `for_member_id`.
+export const forIds = (ev: Pick<CalendarEvent, "for_member_id" | "for_member_ids">) =>
+  ev.for_member_ids?.length ? ev.for_member_ids : ev.for_member_id ? [ev.for_member_id] : [];
+// Whether someone does it or it is about them.
+export const involves = (ev: Pick<CalendarEvent, "responsible_member_id" | "for_member_id" | "for_member_ids">, id: string) =>
+  ev.responsible_member_id === id || forIds(ev).includes(id);
+
 export const isMultiDay = (ev: EventOccurrence) => occurrenceDays(ev).length > 1;
 
 // Occurrences grouped by every day they cover.

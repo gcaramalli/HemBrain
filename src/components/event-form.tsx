@@ -3,9 +3,10 @@
 import { ThinkingDots } from "@/components/thinking-dots";
 import { useState } from "react";
 import { useFamily } from "./family-context";
-import { MemberSelect } from "./member-select";
+import { MemberPicker, MemberSelect } from "./member-select";
 import { useToast } from "./toast";
 import { dayKey, toLocalInput } from "@/lib/dates";
+import { forIds } from "@/lib/events";
 import { RECURRENCES, type Recurrence } from "@/lib/recurrence";
 import type { CalendarEvent, Member } from "@/lib/types";
 
@@ -32,6 +33,7 @@ export function newEventDraft(day?: Date, me?: Member): Draft {
     notes: null,
     responsible_member_id: me?.id ?? null,
     for_member_id: null,
+    for_member_ids: [],
     recurrence: null,
     recurrence_until: null,
     care: null,
@@ -49,7 +51,7 @@ function row(d: Draft) {
     location: d.location,
     notes: d.notes,
     responsible_member_id: d.responsible_member_id,
-    for_member_id: d.for_member_id,
+    for_member_ids: forIds(d), // the trigger sets for_member_id to the first one
     recurrence: d.recurrence,
     recurrence_until: d.recurrence ? d.recurrence_until : null,
     care: d.care ?? null,
@@ -68,10 +70,10 @@ export function EventForm({ initial, onDone }: { initial: Draft; onDone: () => v
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ask, setAsk] = useState<"save" | "delete" | null>(null);
-  const [quick, setQuick] = useState("");
   const [thinking, setThinking] = useState(false);
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((x) => ({ ...x, [k]: v }));
 
+  const hem = ai && !initial.id;
   const isSeries = Boolean(initial.id && initial.recurrence);
   const occDate = dayKey(initial.occurrence_start ?? initial.starts_at);
   const duration = d.ends_at ? Math.round((new Date(d.ends_at).getTime() - new Date(d.starts_at).getTime()) / 60000) : null;
@@ -82,10 +84,10 @@ export function EventForm({ initial, onDone }: { initial: Draft; onDone: () => v
     setD((x) => ({ ...x, starts_at: iso, ends_at: x.ends_at ? new Date(new Date(x.ends_at).getTime() + shift).toISOString() : null }));
   }
 
-  // "Jenny picks up Charlie Thursday 16:00" → fill the form.
-  async function fillFromText(e: React.FormEvent) {
-    e.preventDefault();
-    if (!quick.trim()) return;
+  // "Jenny picks up Charlie Thursday 16:00" typed as the title → Hem fills in the rest.
+  async function fillFromText() {
+    const quick = d.title.trim();
+    if (!quick) return;
     setThinking(true);
     setError(null);
     const now = new Date();
@@ -99,7 +101,7 @@ export function EventForm({ initial, onDone }: { initial: Draft; onDone: () => v
     if (!res?.ok) return setError(t("Couldn't understand that. Fill in the form below instead."));
     const x = (await res.json()) as {
       title: string; start: string; end: string | null; all_day: boolean; location: string | null;
-      responsible: string | null; for_whom: string | null; care: Draft["care"]; repeats: Recurrence | null;
+      responsible: string | null; for_whom: string[]; care: Draft["care"]; repeats: Recurrence | null;
     };
     const byName = (n: string | null) => (n ? members.find((m) => m.name.toLowerCase().startsWith(n.toLowerCase()))?.id ?? null : null);
     const start = new Date(x.all_day ? `${x.start.slice(0, 10)}T00:00` : x.start);
@@ -113,11 +115,10 @@ export function EventForm({ initial, onDone }: { initial: Draft; onDone: () => v
       all_day: x.all_day,
       location: x.location ?? cur.location,
       responsible_member_id: byName(x.responsible) ?? cur.responsible_member_id,
-      for_member_id: byName(x.for_whom),
+      for_member_ids: [...new Set((x.for_whom ?? []).map(byName).filter((id): id is string => !!id))],
       care: x.care,
       recurrence: x.repeats,
     }));
-    setQuick("");
   }
 
   async function save(scope?: Scope) {
@@ -189,20 +190,6 @@ export function EventForm({ initial, onDone }: { initial: Draft; onDone: () => v
 
   return (
     <div className="flex flex-col gap-3">
-      {ai && !initial.id && (
-        <form onSubmit={fillFromText} className="flex gap-2">
-          <input
-            className="input"
-            placeholder={t("Type it: Jenny picks up Charlie Thursday 16:00")}
-            value={quick}
-            onChange={(e) => setQuick(e.target.value)}
-            enterKeyHint="go"
-          />
-          <button className="btn-ghost shrink-0" disabled={thinking || !quick.trim()} aria-label={t("Fill in")}>
-            <ThinkingDots size={6} still={!thinking} />
-          </button>
-        </form>
-      )}
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -210,7 +197,25 @@ export function EventForm({ initial, onDone }: { initial: Draft; onDone: () => v
         }}
         className="flex flex-col gap-3"
       >
-        <input className="input" placeholder={t("What? e.g. Preschool pick-up")} required value={d.title} onChange={(e) => set("title", e.target.value)} autoFocus={!ai || Boolean(initial.id)} />
+        {/* One field: a plain title, or a whole sentence that Hem turns into the form (new events only). */}
+        <div>
+          <div className="flex gap-2">
+            <input
+              className="input"
+              placeholder={hem ? t("What? e.g. Jenny picks up Charlie Thursday 16:00") : t("What? e.g. Preschool pick-up")}
+              required
+              value={d.title}
+              onChange={(e) => set("title", e.target.value)}
+              autoFocus
+            />
+            {hem && (
+              <button type="button" className="btn-ghost shrink-0" onClick={fillFromText} disabled={thinking || !d.title.trim()} aria-label={t("Fill in")}>
+                <ThinkingDots size={6} still={!thinking} />
+              </button>
+            )}
+          </div>
+          {hem && <p className="mt-1 text-xs text-muted">{t("Write a whole sentence and tap the dots: Hem fills in the rest.")}</p>}
+        </div>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={d.all_day} onChange={(e) => set("all_day", e.target.checked)} /> {t("All day")}
         </label>
@@ -247,15 +252,13 @@ export function EventForm({ initial, onDone }: { initial: Draft; onDone: () => v
             onChange={(e) => set("ends_at", e.target.value ? new Date(d.all_day ? e.target.value + "T23:59" : e.target.value).toISOString() : null)}
           />
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <span className="label">{t("Who's responsible")}</span>
-            <MemberSelect value={d.responsible_member_id} onChange={(v) => set("responsible_member_id", v)} placeholder={t("Nobody")} />
-          </div>
-          <div>
-            <span className="label">{t("For whom")}</span>
-            <MemberSelect value={d.for_member_id} onChange={(v) => set("for_member_id", v)} placeholder={t("Everyone")} />
-          </div>
+        <div>
+          <span className="label">{t("Who's responsible")}</span>
+          <MemberSelect value={d.responsible_member_id} onChange={(v) => set("responsible_member_id", v)} placeholder={t("Nobody")} />
+        </div>
+        <div>
+          <span className="label">{t("For whom")}</span>
+          <MemberPicker value={forIds(d)} onChange={(ids) => setD((x) => ({ ...x, for_member_ids: ids, for_member_id: ids[0] ?? null }))} empty={t("Everyone")} />
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div>

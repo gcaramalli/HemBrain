@@ -25,3 +25,29 @@ export function MemberBadge({ id }: { id: string | null }) {
     </span>
   );
 }
+
+// Several people at once (who an event is about): a pill per member, none picked = `empty`.
+export function MemberPicker({ value, onChange, empty }: { value: string[]; onChange: (ids: string[]) => void; empty: string }) {
+  const { members } = useFamily();
+  const toggle = (id: string) => onChange(value.includes(id) ? value.filter((x) => x !== id) : members.filter((m) => m.id === id || value.includes(m.id)).map((m) => m.id));
+  return (
+    <div className="flex flex-wrap gap-2">
+      {members.map((m) => {
+        const on = value.includes(m.id);
+        return (
+          <button
+            type="button"
+            key={m.id}
+            aria-pressed={on}
+            onClick={() => toggle(m.id)}
+            className={`inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-sm ${on ? "border-foreground bg-foreground text-background" : "border-border"}`}
+          >
+            <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: m.color }} />
+            {m.name}
+          </button>
+        );
+      })}
+      {!value.length && <span className="self-center text-xs text-muted">{empty}</span>}
+    </div>
+  );
+}

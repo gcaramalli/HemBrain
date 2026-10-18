@@ -54,7 +54,8 @@ export type CalendarEvent = {
   location: string | null;
   notes: string | null;
   responsible_member_id: string | null;
-  for_member_id: string | null;
+  for_member_id: string | null; // the first of `for_member_ids`, kept in step by a trigger
+  for_member_ids?: string[]; // who it is about (empty = everyone)
   recurrence: "daily" | "weekdays" | "weekly" | "biweekly" | "monthly" | null;
   recurrence_until: string | null;
   // Drop-off / pick-up of a child (Kids tab).
