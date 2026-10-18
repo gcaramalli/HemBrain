@@ -85,11 +85,13 @@ export function buildVignette(kit: Kit, kind: ActKind, colors: string[], seed: n
 
   switch (kind) {
     case "meal": {
-      // A table, plates, and everyone around it (at least two: a meal is shared).
+      // A table, plates, and four people around it.
       g.add(mesh(box(0.72, 0.06, 0.48, 0.03), C.wood, 0, 0.36, 0));
       g.add(mesh(box(0.08, 0.33, 0.08, 0.02), C.wood, 0, 0.17, 0));
-      const diners = people.length < 2 ? [...people, C.guest] : people.slice(0, 4);
-      const seats = [[-0.2, 0.4], [0.2, -0.4], [0.2, 0.4], [-0.2, -0.4]];
+      // Always four round the table, or two facing each other reads as a meeting: our people
+      // on the far side, facing the camera, guests fill the other seats.
+      const diners = [...people.slice(0, 4), C.guest, C.guest, C.guest, C.guest].slice(0, 4);
+      const seats = [[-0.2, -0.4], [0.2, -0.4], [-0.2, 0.4], [0.2, 0.4]];
       const sitters = diners.map((c, i) => {
         const p = person(kit, c, seats[i][0], seats[i][1], true);
         face(p, seats[i][0], 0);
