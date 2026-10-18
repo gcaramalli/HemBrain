@@ -15,6 +15,15 @@ Any time       Personal settings checkbox, or the link at the bottom of the
                email (/unsubscribe → /api/digest/unsubscribe) → profiles.digest_opt_out
 ```
 
+## Pictures
+
+A paragraph that is only `![what it shows](/digest/<file>)` becomes a picture
+(full width, rounded) in the email and in the admin preview; it is left out of
+the plain-text version. Only files in `public/digest/` (png, jpg, gif, webp) are
+accepted, so a draft can't load anything from elsewhere: commit the picture
+there first (e.g. `public/digest/2026-10-18-week.jpg`, ~1000 px wide, < 200 KB),
+then add the line in each language in Hembrain admin → News.
+
 ## Setup
 
 - Domain `hembrain.com` verified in Resend (SPF/DKIM on `send.` and
