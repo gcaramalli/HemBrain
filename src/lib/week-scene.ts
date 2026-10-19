@@ -1,8 +1,9 @@
 // The family's week as a little diorama (Calendar → 3D week): a floating slab
-// with the house in the middle and the next seven days as tiles around it,
-// today in front, then counter-clockwise (tomorrow on its right, the way we read);
-// arrows round the house point the way from one day to the next, a wave runs
-// along them from today, and there is none between the last day and today. On each tile, a little scene per activity (a dinner is a
+// with the house in the middle and the next seven days as the steps of a
+// spiral staircase around it: today in front, the highest step, then
+// counter-clockwise (tomorrow on its right, the way we read), each day a step
+// lower, and an opening between the last day and today so they don't read as
+// neighbours. On each step, a little scene per activity (a dinner is a
 // table with its people around it, see `week-vignettes.ts`), a green flag for
 // to-dos, an orange beacon where a drop-off or pick-up still needs someone.
 // The camera sways on a 10 s loop.
@@ -21,15 +22,21 @@ export type SceneDay = {
 export type WeekScene = { dispose: () => void; labels: () => { x: number; y: number; visible: boolean }[] };
 
 const LOOP = 10; // seconds
-const R = 5.9; // ring of days
-const TILE = 3.9;
+const R = 6; // the middle of the steps
+const R_IN = 3.7;
+const R_OUT = 8.3;
+const STEP = THREE.MathUtils.degToRad(46); // from one day to the next
+const WIDTH = THREE.MathUtils.degToRad(43); // a step's own angle (the rest is a thin gap between steps)
+const GAP = Math.PI * 2 - 6 * STEP; // the opening, from the last day back to today
+const RISE = 0.3; // each day a step lower: a gentle spiral
 const ROAD_R = 9.3;
 const SLAB_R = 10.2;
-// Day i on the ring: today in front, then counter-clockwise as seen from the
-// camera (tomorrow on the right, the last day on the left of today).
-const dayAngle = (i: number) => Math.PI / 2 - (i / 7) * Math.PI * 2;
-const ARROW_R = 3.0;
-const AZ = 0; // the camera's usual angle: today straight in front
+// Day i on the spiral: the opening straight in front, today on its right, then
+// counter-clockwise as seen from the camera (tomorrow on the right and further
+// back, the last day on the left of the opening).
+const dayAngle = (i: number) => Math.PI / 2 - GAP / 2 - i * STEP;
+const stepTop = (i: number) => 0.3 + (6 - i) * RISE;
+const AZ = 0; // the camera's usual angle: looking into the opening
 
 export function createWeekScene(el: HTMLElement, days: SceneDay[], onPick: (day: number | null) => void, inline = false): WeekScene {
   const stage = createStage(el);
@@ -72,11 +79,11 @@ export function createWeekScene(el: HTMLElement, days: SceneDay[], onPick: (day:
     trees.push(g);
     return g;
   };
-  // Trees between the days, out by the road.
-  for (let i = 0; i < 7; i++) {
-    const a = dayAngle(i + 0.5);
-    pop(tree(Math.cos(a) * (R + 1.2), Math.sin(a) * (R + 1.2), i % 2 ? 0.8 : 1), 0.35 + i * 0.03);
-  }
+  // Trees in the opening, between the last day and today.
+  [[-0.2, 7.6, 1], [0, 6.4, 0.8], [0.2, 7.6, 0.9]].forEach(([da, r, k], i) => {
+    const a = Math.PI / 2 + da;
+    pop(tree(Math.cos(a) * r, Math.sin(a) * r, k), 0.35 + i * 0.03);
+  });
   const lamps: THREE.Mesh[] = [];
   for (const [x, z] of [[-1.5, 1.4], [1.5, 1.4], [0, -1.7]]) {
     const g = new THREE.Group();
@@ -88,33 +95,37 @@ export function createWeekScene(el: HTMLElement, days: SceneDay[], onPick: (day:
     pop(g, 0.45);
   }
 
-  // Which way the week goes: a flat arrow between each day and the next (the
-  // first one orange, from today), none between the last day and today, so the
-  // two neighbours don't read as a sequence; a wave lifts them one after the other.
-  const chevron = new THREE.Shape([new THREE.Vector2(0.34, 0), new THREE.Vector2(-0.22, 0.3), new THREE.Vector2(-0.08, 0), new THREE.Vector2(-0.22, -0.3)]);
-  const arrowGeo = new THREE.ShapeGeometry(chevron);
-  arrowGeo.rotateX(-Math.PI / 2);
-  const arrows: THREE.Mesh[] = [];
-  for (let i = 0; i < 6; i++) {
-    const a = dayAngle(i + (i ? 0.5 : 0.6)); // the first one a bit off today's tile, not hidden by its scene
-    const arrow = mesh(arrowGeo, i ? PALETTE.dark : PALETTE.orange, Math.cos(a) * ARROW_R, 0.03, Math.sin(a) * ARROW_R);
-    arrow.rotation.y = -(a - Math.PI / 2); // along the ring, towards the next day
-    arrow.scale.setScalar(1.6);
-    arrow.castShadow = false;
-    arrows.push(arrow);
-    pop(arrow, 0.7 + i * 0.05);
-  }
+  // A step of the staircase: a slice of a ring, centred on +x at radius R
+  // (the step's origin), `h` high, rounded at the edges.
+  const geos: THREE.BufferGeometry[] = [];
+  const slice = (grow: number, h: number) => {
+    const half = WIDTH / 2 + grow / R;
+    const s = new THREE.Shape();
+    s.absarc(0, 0, R_OUT + grow, -half, half, false);
+    s.absarc(0, 0, R_IN - grow, half, -half, true);
+    const bevel = Math.min(0.12, h / 3);
+    const g = new THREE.ExtrudeGeometry(s, { depth: h - 2 * bevel, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 3, curveSegments: 32 });
+    g.rotateX(-Math.PI / 2); // the shape lies flat, extruded upwards
+    g.translate(-R, bevel, 0);
+    geos.push(g);
+    return g;
+  };
 
   // The seven days.
-  const tilePos = (i: number) => new THREE.Vector3(Math.cos(dayAngle(i)) * R, 0, Math.sin(dayAngle(i)) * R);
+  const at = (i: number, r = R) => new THREE.Vector3(Math.cos(dayAngle(i)) * r, 0, Math.sin(dayAngle(i)) * r);
+  const tilePos = (i: number) => at(i).setY(stepTop(i));
   const beacons: THREE.Mesh[] = [];
   const vignettes: Vignette[] = [];
   days.forEach((d, i) => {
     const g = new THREE.Group();
-    g.position.copy(tilePos(i));
-    if (d.today) g.add(mesh(box(TILE + 0.3, 0.16, TILE + 0.3, 0.16), PALETTE.orange, 0, 0.08, 0));
-    g.add(mesh(box(TILE, 0.26, TILE, 0.14), d.weekend ? PALETTE.weekend : PALETTE.tile, 0, 0.16 + (d.today ? 0.04 : 0), 0));
-    const top = 0.29 + (d.today ? 0.04 : 0);
+    g.position.copy(at(i));
+    // The step, down to the plate, so the spiral casts its shadows on the lower ones.
+    const top = stepTop(i);
+    const steps = new THREE.Group();
+    steps.rotation.y = -dayAngle(i);
+    if (d.today) steps.add(mesh(slice(0.2, 0.24), PALETTE.orange, 0, top - 0.34, 0)); // an orange collar under the top
+    steps.add(mesh(slice(0, top), d.weekend ? PALETTE.weekend : PALETTE.tile));
+    g.add(steps);
     // The day's activities as little scenes; bigger when there are fewer.
     const acts = d.acts.slice(0, 3);
     const layout = [[[0, 0]], [[-0.95, 0.1], [0.95, -0.1]], [[-0.95, -0.7], [0.95, -0.7], [0, 0.8]]][acts.length - 1] ?? [];
@@ -126,18 +137,19 @@ export function createWeekScene(el: HTMLElement, days: SceneDay[], onPick: (day:
       vignettes.push(v);
       pop(v.group, 0.55 + i * 0.06 + j * 0.08, g);
     });
-    // Signs at the back corners, out of the scenes' way.
-    const back = -TILE / 2 + 0.3;
+    // Signs at the outer corners, out of the scenes' way.
+    const corner = (side: number) => at(i, R_OUT - 0.45).applyAxisAngle(new THREE.Vector3(0, 1, 0), side * (WIDTH / 2 - 0.06)).sub(at(i));
     if (d.todos) {
       const flag = new THREE.Group();
-      flag.position.set(-TILE / 2 + 0.3, top, back);
+      flag.position.copy(corner(1)).setY(top);
       flag.add(mesh(box(0.06, 0.9, 0.06, 0.02), PALETTE.dark, 0, 0.45, 0));
       flag.add(mesh(box(0.4, 0.26, 0.04, 0.02), PALETTE.green, 0.21, 0.75, 0));
       pop(flag, 0.8 + i * 0.04, g);
     }
     if (d.needs) {
-      const pole = mesh(box(0.08, 1.2, 0.08, 0.02), PALETTE.dark, TILE / 2 - 0.3, top + 0.6, back);
-      const light = mesh(sphereGeo, PALETTE.orange, TILE / 2 - 0.3, top + 1.4, back, PALETTE.orange);
+      const c = corner(-1);
+      const pole = mesh(box(0.08, 1.2, 0.08, 0.02), PALETTE.dark, c.x, top + 0.6, c.z);
+      const light = mesh(sphereGeo, PALETTE.orange, c.x, top + 1.4, c.z, PALETTE.orange);
       light.scale.setScalar(0.3);
       beacons.push(light);
       pop(pole, 0.85, g);
@@ -162,7 +174,7 @@ export function createWeekScene(el: HTMLElement, days: SceneDay[], onPick: (day:
     fit = Math.max((SLAB_R + 0.3) / (tanV * camera.aspect), (inline ? 8.6 : 12) / tanV);
   });
 
-  const labels = () => days.map((_, i) => stage.project(tilePos(i).multiplyScalar((R + TILE / 2 + 0.1) / R)));
+  const labels = () => days.map((_, i) => stage.project(at(i, R_OUT + 0.1).setY(stepTop(i))));
 
   let zoom = 0;
   const aim = new THREE.Vector3();
@@ -193,17 +205,17 @@ export function createWeekScene(el: HTMLElement, days: SceneDay[], onPick: (day:
       for (const b of beacons) b.scale.setScalar(0.26 + 0.08 * (0.5 + 0.5 * Math.sin(time * 6)));
       (lamps[0].material as THREE.MeshStandardMaterial).emissiveIntensity = 1.1 + 0.3 * Math.sin(time * 2);
       for (const v of vignettes) v.update(time);
-      arrows.forEach((a, i) => {
-        // today → the last day, again and again, once the arrows have popped in
-        const wave = clamp01(t - 1.2) * Math.pow(Math.max(0, Math.cos(time * 2.2 - i * 0.8)), 6);
-        a.position.y = 0.03 + 0.18 * wave;
-        a.scale.setScalar(1.6 * (1 + 0.3 * wave));
-      });
     } else {
       home.puff(0, false);
       for (const v of vignettes) v.update(0);
     }
   });
 
-  return { labels, dispose: stage.dispose };
+  return {
+    labels,
+    dispose: () => {
+      stage.dispose();
+      for (const g of geos) g.dispose();
+    },
+  };
 }
