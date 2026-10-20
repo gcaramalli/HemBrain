@@ -1,4 +1,4 @@
-import { createLucideIcon, Wallet, Apple, Earth, Gauge, Lightbulb, SlidersHorizontal, Baby, Backpack, Bell, Brain, BriefcaseBusiness, FileText, CalendarDays, ChartColumn, ChefHat, CookingPot, ListChecks, Lock, Moon, Receipt, Settings, Shirt, ShoppingCart, UserRound, Utensils, type LucideIcon } from "lucide-react";
+import { createLucideIcon, Clapperboard, Wallet, Apple, Earth, Gauge, Lightbulb, SlidersHorizontal, Baby, Backpack, Bell, Brain, BriefcaseBusiness, FileText, CalendarDays, ChartColumn, ChefHat, CookingPot, ListChecks, Lock, Moon, Receipt, Settings, Shirt, ShoppingCart, UserRound, Utensils, type LucideIcon } from "lucide-react";
 
 // Hembrain's own mark as a line icon (the Home tab): the house that is also a
 // speech bubble, with the three dots (the family, and Claude thinking).
@@ -29,6 +29,7 @@ export const MODULES = {
   expenses: { color: "#2fa37a", Icon: Wallet },
   papers: { color: "#5aa9c9", Icon: FileText },
   travels: { color: "#2fa4c9", Icon: Earth },
+  watch: { color: "#d9604f", Icon: Clapperboard },
   me: { color: "#e07ab4", Icon: UserRound },
   private: { color: "#e07ab4", Icon: Lock },
   work: { color: "#c98a4b", Icon: BriefcaseBusiness },

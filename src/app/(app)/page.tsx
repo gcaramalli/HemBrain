@@ -44,6 +44,7 @@ export default function HomePage() {
   const [noteCount, setNoteCount] = useState<number | null>(null);
   const [paperDates, setPaperDates] = useState<Deadline[]>([]);
   const [paperCount, setPaperCount] = useState<number | null>(null);
+  const [toWatch, setToWatch] = useState<number | null>(null);
   // The living house: who is asleep, whether dinner is logged, and a clock that moves everyone along.
   const [asleep, setAsleep] = useState<string[]>([]);
   const [dinner, setDinner] = useState(false);
@@ -114,6 +115,11 @@ export default function HomePage() {
         setPaperCount(data?.length ?? 0);
         setPaperDates(upcomingDeadlines((data ?? []) as Paper[], 30));
       });
+    supabase
+      .from("watchlist")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "to_watch")
+      .then(({ count }) => setToWatch(count ?? 0));
     return () => {
       supabase.removeChannel(channel);
       clearInterval(clock);
@@ -247,6 +253,13 @@ export default function HomePage() {
           sub={paperCount === 0 ? t("Contracts, insurance, warranties: Hem reminds you before they end") : t("Contracts, insurance, receipts, IDs")}
         />
         <TravelsTile />
+        <HubTile
+          href="/watch"
+          module="watch"
+          title={t("Films & series")}
+          empty={toWatch === 0}
+          sub={toWatch === null ? "…" : toWatch === 0 ? t("Recommendations to watch, one by one") : toWatch === 1 ? t("1 to watch") : t("{n} to watch", { n: toWatch })}
+        />
       </nav>
     </div>
   );
