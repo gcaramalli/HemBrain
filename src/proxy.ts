@@ -25,9 +25,9 @@ export async function proxy(request: NextRequest) {
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Verified locally against the project's signing keys when it can (no trip to Supabase Auth on every tap).
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims;
 
   const path = request.nextUrl.pathname;
   const isPublic = path.startsWith("/login") || path.startsWith("/signup") || path.startsWith("/auth") || path.startsWith("/welcome") || path.startsWith("/unsubscribe");

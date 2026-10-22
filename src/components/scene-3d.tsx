@@ -2,12 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 
+const SETTLE_MS = 150;
+
 export type Built = { dispose: () => void; labels?: () => { x: number; y: number; visible: boolean }[] };
 export type SceneLabel = { key: string; node: React.ReactNode; className?: string };
 
 // Mounts one of the little three.js worlds (built with `createStage` from
 // `src/lib/three-kit.ts`) in a box, rebuilds it only when `sig` changes (the
-// data it shows, as a string), and pins HTML labels on the points its
+// data it shows, as a string) and has stayed put for SETTLE_MS, and pins HTML labels on the points its
 // `labels()` gives (no 3D text). Without WebGL it renders nothing and calls `onFail`.
 // Import it through next/dynamic so three.js only loads where a scene is shown.
 export function Scene3D({
@@ -36,28 +38,33 @@ export function Scene3D({
   useEffect(() => {
     const el = box.current;
     if (!el) return;
-    let scene: Built;
-    try {
-      scene = make.current(el);
-    } catch {
-      setFailed(true);
-      fail.current?.();
-      return;
-    }
+    let scene: Built | null = null;
     let frame = 0;
-    const place = () => {
-      frame = requestAnimationFrame(place);
-      scene.labels?.().forEach((p, i) => {
-        const tag = tags.current[i];
-        if (!tag) return;
-        tag.style.transform = `translate(${p.x * el.clientWidth}px, ${p.y * el.clientHeight}px) translate(-50%, -50%)`;
-        tag.style.visibility = p.visible ? "visible" : "hidden";
-      });
-    };
-    if (scene.labels) frame = requestAnimationFrame(place);
+    // Data often lands in several pieces: wait until it settles, then build once.
+    const wait = setTimeout(() => {
+      try {
+        scene = make.current(el);
+      } catch {
+        setFailed(true);
+        fail.current?.();
+        return;
+      }
+      const built = scene;
+      const place = () => {
+        frame = requestAnimationFrame(place);
+        built.labels?.().forEach((p, i) => {
+          const tag = tags.current[i];
+          if (!tag) return;
+          tag.style.transform = `translate(${p.x * el.clientWidth}px, ${p.y * el.clientHeight}px) translate(-50%, -50%)`;
+          tag.style.visibility = p.visible ? "visible" : "hidden";
+        });
+      };
+      if (built.labels) frame = requestAnimationFrame(place);
+    }, SETTLE_MS);
     return () => {
+      clearTimeout(wait);
       cancelAnimationFrame(frame);
-      scene.dispose();
+      scene?.dispose();
     };
   }, [sig]);
 
