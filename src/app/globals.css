@@ -226,6 +226,10 @@ body {
 .hem-nudge {
   animation: hem-nudge 0.6s ease-in-out 1.9s 1;
 }
+/* The loading screen between tabs: invisible for the first 150 ms. */
+.page-wait {
+  animation: hem-in 0.2s ease-out 150ms both;
+}
 @media (prefers-reduced-motion: reduce) {
   .thinking-dot { animation: none; opacity: 0.8; }
   .hem-in, .hem-nudge { animation: none; }

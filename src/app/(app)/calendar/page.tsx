@@ -77,6 +77,8 @@ export default function CalendarPage() {
   const [anchor, setAnchor] = useState(() => new Date());
   const [focus, setFocus] = useState<string | null>(null);
   const [allEvents, setEvents] = useState<EventOccurrence[]>([]);
+  // The 3D week is built once the week has arrived, not on the empty one first.
+  const [loaded, setLoaded] = useState(false);
   const [allTodos, setTodos] = useState<ListItem[]>([]);
   const [editing, setEditing] = useState<Parameters<typeof EventForm>[0]["initial"] | null>(null);
   const [diorama, setDiorama] = useState(false);
@@ -97,6 +99,7 @@ export default function CalendarPage() {
     ]);
     setEvents(evs);
     setTodos(todos);
+    setLoaded(true);
   }, [supabase, members, t, fromKey, span]);
 
 
@@ -263,7 +266,7 @@ export default function CalendarPage() {
       {mode === "week" && !flat && (
         <section className="card relative overflow-hidden p-0">
           <div className="relative aspect-square max-h-[26rem] w-full">
-            <Stage inline week={week} members={members} onPick={(i) => setFocus(i === null ? null : week[i].key)} onFail={() => setFlat(true)} />
+            {loaded && <Stage inline week={week} members={members} onPick={(i) => setFocus(i === null ? null : week[i].key)} onFail={() => setFlat(true)} />}
           </div>
           <button onClick={() => setDiorama(true)} aria-label={t("Full screen")} className="glass absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full">
             <Maximize2 size={16} />

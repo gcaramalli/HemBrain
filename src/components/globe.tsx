@@ -125,7 +125,7 @@ export function Globe({
 function createScene(el: HTMLDivElement, onPick: (code: string) => void): Scene {
   const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
   renderer.domElement.style.display = "block";
   el.appendChild(renderer.domElement);
 
@@ -403,6 +403,7 @@ function createScene(el: HTMLDivElement, onPick: (code: string) => void): Scene 
       haloMat.dispose();
       texture.dispose();
       renderer.dispose();
+      renderer.forceContextLoss();
       renderer.domElement.remove();
     },
   };

@@ -49,6 +49,8 @@ export default function HomePage() {
   const [dinner, setDinner] = useState(false);
   const [now, setNow] = useState(() => new Date());
   const [flat, setFlat] = useState(false);
+  // The house is built once what it shows has arrived, not once per answer.
+  const [houseReady, setHouseReady] = useState(false);
   const [expenses, setExpenses] = useState<Pick<Expense, "amount" | "currency" | "paid_by" | "split_among" | "shares">[] | null>(null);
 
   const loadEvents = useCallback(async () => {
@@ -64,7 +66,7 @@ export default function HomePage() {
   }, [supabase, members, t]);
 
   useEffect(() => {
-    loadEvents();
+    const forHouse: PromiseLike<unknown>[] = [loadEvents()];
     fetchOccasions(supabase).then(setOccasions);
     const channel = supabase
       .channel("today-events")
@@ -84,17 +86,20 @@ export default function HomePage() {
       .eq("lists.kind", "todo")
       .then(({ count }) => setTodoCount(count ?? 0));
     supabase.from("meals").select("id", { count: "exact", head: true }).then(({ count }) => setMealCount(count ?? 0));
-    supabase
-      .from("kid_sleep")
-      .select("kid_id")
-      .is("ends_at", null)
-      .then(({ data }) => setAsleep((data ?? []).map((r) => r.kid_id as string)));
-    supabase
-      .from("meals")
-      .select("id", { count: "exact", head: true })
-      .eq("eaten_on", dayKey(new Date()))
-      .eq("slot", "dinner")
-      .then(({ count }) => setDinner((count ?? 0) > 0));
+    forHouse.push(
+      supabase
+        .from("kid_sleep")
+        .select("kid_id")
+        .is("ends_at", null)
+        .then(({ data }) => setAsleep((data ?? []).map((r) => r.kid_id as string))),
+      supabase
+        .from("meals")
+        .select("id", { count: "exact", head: true })
+        .eq("eaten_on", dayKey(new Date()))
+        .eq("slot", "dinner")
+        .then(({ count }) => setDinner((count ?? 0) > 0)),
+    );
+    Promise.all(forHouse).finally(() => setHouseReady(true));
     const clock = setInterval(() => setNow(new Date()), 5 * 60_000);
     supabase.from("notes").select("id", { count: "exact", head: true }).then(({ count }) => setNoteCount(count ?? 0));
     supabase
@@ -153,7 +158,7 @@ export default function HomePage() {
 
       {!flat && (
         <div className={`card relative aspect-[4/3] overflow-hidden p-0 ${house.night ? "bg-[radial-gradient(ellipse_at_50%_30%,#2a3a5c_0%,#111722_75%)]" : ""}`}>
-          <LivingHouse data={house} names={Object.fromEntries(members.map((m) => [m.id, m.name]))} onFail={() => setFlat(true)} />
+          {houseReady && <LivingHouse data={house} names={Object.fromEntries(members.map((m) => [m.id, m.name]))} onFail={() => setFlat(true)} />}
         </div>
       )}
 

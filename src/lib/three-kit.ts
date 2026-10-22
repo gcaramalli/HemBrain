@@ -33,6 +33,10 @@ export const PALETTE = {
   gold: "#f2b84b",
 };
 
+// After the pop-in or a touch, the idle sway is drawn at this rate, and stops after IDLE_MS.
+const IDLE_FPS = 20;
+const IDLE_MS = 20_000;
+
 export const easeOutBack = (x: number) => {
   const c = 1.9;
   return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2);
@@ -63,16 +67,21 @@ export type Stage = {
   onResize: (cb: (w: number, h: number) => void) => void;
   // A tap (not a drag): the first thing hit, if any.
   onTap: (cb: (hit: THREE.Intersection | undefined) => void) => void;
+  // Draw every frame for `ms` (default 2.5 s): call it when the scene changes from outside.
+  wake: (ms?: number) => void;
   // A world point → its place in the element (0–1), to pin HTML labels on it.
   project: (v: THREE.Vector3) => { x: number; y: number; visible: boolean };
   dispose: () => void;
 };
 
 export function createStage(el: HTMLElement, opts: { ao?: boolean; shadow?: number; fov?: number; exposure?: number } = {}): Stage {
-  const { ao = true, shadow = 13, fov = 30, exposure = 1.05 } = opts;
+  const { shadow = 13, fov = 30, exposure = 1.05 } = opts;
   const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // Phones: no AO pass and a smaller shadow map — the GPU is shared with the page they sit in.
+  const phone = window.matchMedia("(pointer: coarse)").matches;
+  const ao = (opts.ao ?? true) && !phone;
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  const dpr = Math.min(window.devicePixelRatio, 2);
+  const dpr = Math.min(window.devicePixelRatio, 1.5);
   renderer.setPixelRatio(dpr);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap; // soft through shadow.radius (PCFSoft is gone in r18x)
@@ -88,7 +97,7 @@ export function createStage(el: HTMLElement, opts: { ao?: boolean; shadow?: numb
   const sun = new THREE.DirectionalLight("#fff4e4", 2.6);
   sun.position.set(shadow * 0.55, shadow * 1.1, shadow * 0.6);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.mapSize.set(phone ? 1024 : 2048, phone ? 1024 : 2048);
   sun.shadow.radius = 6;
   sun.shadow.bias = -0.0004;
   sun.shadow.normalBias = 0.02;
@@ -100,7 +109,7 @@ export function createStage(el: HTMLElement, opts: { ao?: boolean; shadow?: numb
   let gtao: GTAOPass | null = null;
   if (ao) {
     composer = new EffectComposer(renderer);
-    composer.setPixelRatio(Math.min(dpr, 1.5)); // the AO pass is the heavy part on phones
+    composer.setPixelRatio(dpr);
     composer.addPass(new RenderPass(scene, camera));
     gtao = new GTAOPass(scene, camera, 512, 512);
     gtao.updateGtaoMaterial({ radius: 0.6, distanceExponent: 1, thickness: 1, scale: 1 });
@@ -143,6 +152,7 @@ export function createStage(el: HTMLElement, opts: { ao?: boolean; shadow?: numb
   const pops: { obj: THREE.Object3D; y: number; k: THREE.Vector3; delay: number }[] = [];
   const pop = <T extends THREE.Object3D>(obj: T, delay: number, parent: THREE.Object3D = world) => {
     pops.push({ obj, y: obj.position.y, k: obj.scale.clone(), delay });
+    busyUntil = Math.max(busyUntil, start + (delay + 1) * 1000);
     if (!still) obj.scale.setScalar(0.0001);
     parent.add(obj);
     return obj;
@@ -154,7 +164,10 @@ export function createStage(el: HTMLElement, opts: { ao?: boolean; shadow?: numb
 
   const ray = new THREE.Raycaster();
   let downAt: { x: number; y: number } | null = null;
-  const down = (e: PointerEvent) => (downAt = { x: e.clientX, y: e.clientY });
+  const down = (e: PointerEvent) => {
+    downAt = { x: e.clientX, y: e.clientY };
+    wake();
+  };
   const up = (e: PointerEvent) => {
     if (!downAt || Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 8) return;
     downAt = null;
@@ -162,6 +175,7 @@ export function createStage(el: HTMLElement, opts: { ao?: boolean; shadow?: numb
     ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
     const hit = ray.intersectObjects(world.children, true)[0];
     taps.forEach((cb) => cb(hit));
+    wake();
   };
   el.addEventListener("pointerdown", down);
   el.addEventListener("pointerup", up);
@@ -177,13 +191,17 @@ export function createStage(el: HTMLElement, opts: { ao?: boolean; shadow?: numb
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     resizes.forEach((cb) => cb(w, h));
+    wake();
   };
   const ro = new ResizeObserver(resize);
   ro.observe(el);
 
   // Only draw while it is on screen.
   let visible = true;
-  const io = new IntersectionObserver(([e]) => (visible = e.isIntersecting));
+  const io = new IntersectionObserver(([e]) => {
+    if (e.isIntersecting && !visible) wake();
+    visible = e.isIntersecting;
+  });
   io.observe(el);
 
   const tmp = new THREE.Vector3();
@@ -192,12 +210,24 @@ export function createStage(el: HTMLElement, opts: { ao?: boolean; shadow?: numb
     return { x: (tmp.x + 1) / 2, y: (1 - tmp.y) / 2, visible: tmp.z < 1 };
   };
 
+  // Draw on demand: every frame while something moves (the pop-in, a tap, a zoom),
+  // then a slow idle rate for the sway, then nothing once nobody has touched it for a while.
   const start = performance.now();
   let last = start;
   let frame = 0;
+  let busyUntil = start + 3000;
+  let idleUntil = start + IDLE_MS;
+  let drawn = 0;
+  function wake(ms = 2500) {
+    const now = performance.now();
+    busyUntil = Math.max(busyUntil, now + ms);
+    idleUntil = Math.max(idleUntil, now + IDLE_MS);
+  }
   const tick = (now: number) => {
     frame = requestAnimationFrame(tick);
     if (document.hidden || !visible) return;
+    if (now > busyUntil && (still || now > idleUntil || now - drawn < 1000 / IDLE_FPS)) return;
+    drawn = now;
     const time = (now - start) / 1000;
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
@@ -234,6 +264,7 @@ export function createStage(el: HTMLElement, opts: { ao?: boolean; shadow?: numb
       if (el.clientWidth && el.clientHeight) cb(el.clientWidth, el.clientHeight);
     },
     onTap: (cb) => taps.push(cb),
+    wake,
     project,
     dispose() {
       cancelAnimationFrame(frame);
@@ -247,6 +278,8 @@ export function createStage(el: HTMLElement, opts: { ao?: boolean; shadow?: numb
       gtao?.dispose();
       composer?.dispose();
       renderer.dispose();
+      // Hand the WebGL context back now: Safari only keeps a few alive.
+      renderer.forceContextLoss();
       renderer.domElement.remove();
     },
   };
