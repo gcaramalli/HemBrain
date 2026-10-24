@@ -121,12 +121,18 @@ export function createHomeScene(el: HTMLElement, data: HomeSceneData) {
     body.scale.setScalar(p.kid ? 2.1 : 2.8);
     g.add(body);
     if (p.asleep) {
-      const bed = mesh(box(0.7, 0.18, 1.0, 0.06), "#ffffff", 0, 0.09, 0);
-      g.add(bed, mesh(box(0.72, 0.2, 0.55, 0.06), PALETTE.sky, 0, 0.13, 0.22));
+      // A bed long enough for the kid (≈1.1 lying down): headboard and pillow at
+      // the back, the kid on their back with their feet at the front, under the blanket.
+      g.add(
+        mesh(box(0.82, 0.22, 1.4, 0.06), "#ffffff", 0, 0.11, 0),
+        mesh(box(0.82, 0.5, 0.08, 0.03), PALETTE.wood, 0, 0.25, -0.72),
+        mesh(box(0.5, 0.08, 0.26, 0.04), "#ffffff", 0, 0.26, -0.42),
+        mesh(box(0.86, 0.38, 0.8, 0.08), PALETTE.sky, 0, 0.4, 0.3),
+      );
       body.rotation.x = -Math.PI / 2;
-      body.position.set(0, 0.22, -0.3);
+      body.position.set(0, 0.39, 0.55);
       for (let i = 0; i < 3; i++) {
-        const z = mesh(kit.sphere, "#c9d8ff", 0.1, 0.6, -0.3, "#9db4ff");
+        const z = mesh(kit.sphere, "#c9d8ff", 0.1, 0.6, -0.35, "#9db4ff");
         z.castShadow = false;
         g.add(z);
         zz.push(z);
@@ -157,7 +163,7 @@ export function createHomeScene(el: HTMLElement, data: HomeSceneData) {
     zz.forEach((z, i) => {
       const u = (time * 0.4 + i / 3) % 1;
       const g = z.parent!;
-      z.position.set(0.15 + u * 0.3, 0.45 + u * 0.8, -0.3);
+      z.position.set(0.15 + u * 0.3, 0.65 + u * 0.8, -0.35);
       z.scale.setScalar(0.04 + u * 0.06);
       z.visible = g.visible;
     });
