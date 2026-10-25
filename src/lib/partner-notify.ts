@@ -4,6 +4,7 @@ import { careTitle, usualTime } from "./care";
 import { addDays, dayKey, startOfDay } from "./dates";
 import { expand, forIds, involves } from "./events";
 import { BCP47, isLocale, translator, type Locale } from "./i18n";
+import { sendSignupAlerts } from "@/lib/admin-notify";
 import { sendPush } from "@/lib/push";
 import type { CalendarEvent, CareAvailability, ListItem, Member } from "./types";
 
@@ -19,7 +20,7 @@ type Answer = CareAvailability & { family_id: string };
 type Activity = {
   id: number;
   family_id: string;
-  table_name: "events" | "list_items" | "care_availability";
+  table_name: "events" | "list_items" | "care_availability" | "signups";
   row_id: string;
   actor: string | null;
   via_app: boolean;
@@ -56,7 +57,10 @@ export async function sendDueNotifications(db: SupabaseClient) {
     .lte("due_at", now.toISOString())
     .select("id, family_id, table_name, row_id, actor, via_app, before, after");
   if (error) throw new Error(error.message);
-  const rows = (data ?? []) as Activity[];
+  const claimed = (data ?? []) as Activity[];
+  // First sign-ins go to the super admins only (src/lib/admin-notify.ts).
+  const signups = claimed.filter((r) => r.table_name === "signups").map((r) => r.row_id);
+  const rows = claimed.filter((r) => r.table_name !== "signups");
 
   const notes: Note[] = [];
   for (const familyId of new Set(rows.map((r) => r.family_id))) {
@@ -98,7 +102,11 @@ export async function sendDueNotifications(db: SupabaseClient) {
       return 0;
     });
   }
-  return { claimed: rows.length, sent };
+  sent += await sendSignupAlerts(db, signups).catch((e) => {
+    console.error("signup alerts", e);
+    return 0;
+  });
+  return { claimed: claimed.length, sent };
 }
 
 function helpers(ctx: Ctx, recipient: Member) {
