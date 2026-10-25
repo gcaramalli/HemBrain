@@ -151,6 +151,18 @@ export type Note = {
   updated_at: string;
 };
 
+export type WatchItem = {
+  id: string;
+  kind: "film" | "series";
+  title: string;
+  recommended_by: string | null;
+  platform: string | null;
+  notes: string | null;
+  status: "to_watch" | "watched";
+  watched_on: string | null;
+  created_at: string;
+};
+
 export type Gift = {
   id: string;
   from_profile: string;
