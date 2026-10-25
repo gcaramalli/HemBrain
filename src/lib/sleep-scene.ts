@@ -60,12 +60,15 @@ export function createSleepScene(el: HTMLElement, d: SleepDial) {
   // In the middle: a bed, the kid in it or standing beside it, and the sun or the moon.
   const middle = new THREE.Group();
   middle.add(mesh(box(1.0, 0.25, 1.5, 0.08), "#ffffff", 0, 0.13, 0), mesh(box(1.04, 0.5, 0.12, 0.05), PALETTE.wood, 0, 0.25, -0.75));
-  middle.add(mesh(box(1.02, 0.12, 0.8, 0.05), PALETTE.sky, 0, 0.3, 0.3));
+  // The kid lying down is ≈1.15 long: head on the pillow at the back, feet at the front, under the blanket.
+  middle.add(mesh(box(0.55, 0.09, 0.28, 0.04), "#ffffff", 0, 0.29, -0.47));
+  if (d.asleep) middle.add(mesh(box(1.06, 0.4, 0.85, 0.08), PALETTE.sky, 0, 0.44, 0.33));
+  else middle.add(mesh(box(1.02, 0.12, 0.8, 0.05), PALETTE.sky, 0, 0.3, 0.3));
   const kid = person(kit, d.color);
   kid.scale.setScalar(2.2);
   if (d.asleep) {
     kid.rotation.x = -Math.PI / 2;
-    kid.position.set(0, 0.32, -0.45);
+    kid.position.set(0, 0.43, 0.6);
   } else kid.position.set(0.9, 0, 0.4);
   middle.add(kid);
   pop(middle, 0.4);
@@ -75,7 +78,7 @@ export function createSleepScene(el: HTMLElement, d: SleepDial) {
   pop(sky, 0.9);
   const zz = d.asleep
     ? [0, 1, 2].map(() => {
-        const z = mesh(kit.sphere, "#c9d8ff", 0, 0.8, -0.4, "#9db4ff");
+        const z = mesh(kit.sphere, "#c9d8ff", 0, 0.8, -0.35, "#9db4ff");
         z.castShadow = false;
         middle.add(z);
         return z;
@@ -90,7 +93,7 @@ export function createSleepScene(el: HTMLElement, d: SleepDial) {
     if (!d.asleep) kid.position.y = Math.abs(Math.sin(time * 2.4)) * 0.08;
     zz.forEach((z, i) => {
       const u = (time * 0.4 + i / 3) % 1;
-      z.position.set(0.1 + u * 0.35, 0.6 + u * 0.9, -0.45);
+      z.position.set(0.1 + u * 0.35, 0.75 + u * 0.9, -0.35);
       z.scale.setScalar(0.05 + u * 0.07);
     });
   });
