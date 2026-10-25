@@ -5,7 +5,7 @@ import { sendPush } from "@/lib/push";
 
 // Tells Hembrain's super admins (and nobody else) that a new account has
 // signed in for the first time. Rows are 'signups' rows of `activity`
-// (supabase/migrations/0032_admin_signup_alert_weekly_report.sql), claimed by
+// (supabase/migrations/0033_admin_signup_alert_weekly_report.sql), claimed by
 // sendDueNotifications; row_id = the new account's id.
 export async function sendSignupAlerts(db: SupabaseClient, userIds: string[]) {
   if (!userIds.length) return 0;

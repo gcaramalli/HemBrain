@@ -3,7 +3,7 @@ import { appUrl } from "./digest";
 import { BCP47, translator, type Locale } from "./i18n";
 
 // The Sunday usage email to the super admins (/api/cron/usage-report), built
-// from hembrain_weekly_report() (0032): counts and dates, never content.
+// from hembrain_weekly_report() (0033): counts and dates, never content.
 
 export type WeeklyReport = {
   generated_at: string;

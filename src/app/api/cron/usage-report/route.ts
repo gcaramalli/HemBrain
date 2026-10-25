@@ -1,5 +1,5 @@
 // Sunday morning usage email to Hembrain's super admins, run by Vercel Cron
-// (vercel.json). Numbers come from hembrain_weekly_report() (0032).
+// (vercel.json). Numbers come from hembrain_weekly_report() (0033).
 import { digestEnabled } from "@/lib/digest";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildReport, sendReportEmail, type WeeklyReport } from "@/lib/usage-report";
