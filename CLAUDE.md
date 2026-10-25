@@ -8,7 +8,7 @@ next steps in `ROADMAP.md`.
 Next.js 16 + Supabase. All data lives in Supabase Postgres; every table is scoped by `family_id` and
 protected by RLS (`private.my_family_id()`, in a schema the API does not expose).
 
-Supabase project: **Caramalli Familly brain** (`jvzwbguwoafayxmdirnj`, in Jenny's org, eu-west-1). Migrations 0001–0028 are applied (0029–0030 = partner notifications, see `docs/notifications.md`; 0031 = events about several people). Sign-up is open (multi-family); joining a family needs an invite code (`invites.code`, link `/signup?invite=…`), see `handle_new_user()` in `0004_dashboard_users_join_invited_family.sql` (accounts created from the Supabase dashboard have no metadata and join the family that invited their email). A user's family = `profiles.family_id`.
+Supabase project: **Caramalli Familly brain** (`jvzwbguwoafayxmdirnj`, in Jenny's org, eu-west-1). Migrations 0001–0028 are applied (0029–0030 = partner notifications, see `docs/notifications.md`; 0031 = events about several people; 0032 = watchlist, to apply). Sign-up is open (multi-family); joining a family needs an invite code (`invites.code`, link `/signup?invite=…`), see `handle_new_user()` in `0004_dashboard_users_join_invited_family.sql` (accounts created from the Supabase dashboard have no metadata and join the family that invited their email). A user's family = `profiles.family_id`.
 
 ## Adding things for the family
 
@@ -141,6 +141,7 @@ Rules of thumb:
   offers 50/50, the usual split, or Other (amounts by hand). Parts and the fewest transfers in `parts` / `settleUp`
   (`src/lib/expenses.ts`, in cents, per currency). Connector `add_expense` (usual split by default, `shares` by name) /
   `get_expenses`.
+- `watchlist` — Films & series recommended to the family (Home tile, `/watch`): `kind` film/series, `title`, `recommended_by` and `platform` (free text), `notes`, `status` to_watch → watched (`watched_on`). Added one by one in the app, family-wide RLS; not in the connector yet.
 - `gifts` — little gifts between accounts (emoji + note), private to sender/recipient, unwrapped in `GiftInbox`; one at a time per sender → recipient (unique index on wrapped ones): `SendGift` shows the wrapped one as waiting (take it back) and `send_gift` refuses a second
 - `profiles.locale` — app language per account (en/fr/sv)
 - `occasions` — dates celebrated every year (weddings attended, friends' / relatives' birthdays): `date` = original day,
