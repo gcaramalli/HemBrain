@@ -214,6 +214,35 @@ export function buildVignette(kit: Kit, kind: ActKind, colors: string[], seed: n
       update = (t) => (glow.emissiveIntensity = 0.5 + 0.35 * Math.abs(Math.sin(t * 2.3 + seed)));
       break;
     }
+    case "homeoffice": {
+      // Working from the kitchen table: a desk by a window, a laptop that glows, a mug, a plant.
+      g.add(mesh(box(0.8, 0.05, 0.42, 0.03), C.wood, 0, 0.36, -0.1));
+      for (const x of [-0.34, 0.34]) g.add(mesh(box(0.05, 0.34, 0.05, 0.01), C.wood, x, 0.17, -0.1));
+      g.add(mesh(box(0.3, 0.02, 0.2, 0.01), C.dark, -0.1, 0.4, -0.08));
+      const screen = mesh(box(0.3, 0.2, 0.015, 0.01), C.white, -0.1, 0.51, -0.18, C.sky);
+      screen.rotation.x = -0.15;
+      g.add(screen);
+      g.add(mesh(box(0.07, 0.08, 0.07, 0.02), C.white, 0.22, 0.42, -0.05)); // the mug
+      g.add(mesh(box(0.06, 0.07, 0.06, 0.02), C.orange, 0.34, 0.43, -0.2)); // the plant pot
+      const leaves = mesh(sphere, C.green, 0.34, 0.52, -0.2);
+      leaves.scale.setScalar(0.06);
+      g.add(leaves);
+      g.add(mesh(box(0.34, 0.5, 0.02, 0.01), C.glass, -0.3, 0.7, -0.4), mesh(box(0.4, 0.04, 0.04, 0.01), C.wood, -0.3, 0.45, -0.4)); // the window
+      const worker = person(kit, people[0], -0.1, 0.28, true);
+      face(worker, -0.1, -0.1);
+      g.add(worker);
+      const steam = mesh(sphere, C.white, 0.22, 0.55, -0.05);
+      g.add(steam);
+      const glow = screen.material as THREE.MeshStandardMaterial;
+      update = (t) => {
+        glow.emissiveIntensity = 0.4 + 0.25 * Math.abs(Math.sin(t * 1.7 + seed));
+        worker.children[1].position.y = 0.46 + 0.015 * Math.sin(t * 6 + seed); // typing
+        const u = (t * 0.5 + seed) % 1;
+        steam.position.y = 0.5 + u * 0.25;
+        steam.scale.setScalar(0.025 + u * 0.03);
+      };
+      break;
+    }
     case "work": {
       // An office block with a window grid, someone heading in with a briefcase.
       g.add(mesh(box(0.62, 0.95, 0.5, 0.05), "#9fb4d8", 0, 0.475, -0.2));
