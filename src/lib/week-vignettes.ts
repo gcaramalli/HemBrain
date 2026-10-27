@@ -94,6 +94,52 @@ export function buildVignette(kit: Kit, kind: ActKind, colors: string[], seed: n
       };
       break;
     }
+    case "volley": {
+      // A sand court, a high net, two players jumping, the ball going over.
+      g.add(mesh(box(1.1, 0.04, 0.66, 0.02), "#e9cf94", 0, 0.02, 0));
+      g.add(mesh(box(0.03, 0.34, 0.03, 0.01), C.dark, 0, 0.21, -0.33), mesh(box(0.03, 0.34, 0.03, 0.01), C.dark, 0, 0.21, 0.33));
+      g.add(mesh(box(0.012, 0.14, 0.62, 0.004), C.white, 0, 0.34, 0));
+      const players = (people.length < 2 ? [...people, C.guest] : people.slice(0, 2)).map((c, i) => {
+        const p = person(kit, c, i ? 0.4 : -0.4, 0);
+        face(p, 0, 0);
+        g.add(p);
+        return p;
+      });
+      const ball = mesh(sphere, C.white, 0, 0.5, 0);
+      ball.scale.setScalar(0.05);
+      g.add(ball);
+      update = (t) => {
+        const u = (t * 0.7 + seed) % 2;
+        const x = u < 1 ? u : 2 - u;
+        ball.position.set(-0.36 + x * 0.72, 0.3 + Math.sin(Math.PI * (u % 1)) * 0.45, 0);
+        players.forEach((p, i) => {
+          const near = (u < 1 ? i === 1 : i === 0) ? Math.max(0, Math.sin(Math.PI * (u % 1))) : 0;
+          p.position.y = 0.04 + near * 0.06 + 0.02 * Math.abs(Math.sin(t * 3 + i));
+        });
+      };
+      break;
+    }
+    case "hair": {
+      // A salon: a mirror on the wall, a chair with the client, the hairdresser snipping around them.
+      g.add(mesh(box(0.8, 0.02, 0.7, 0.01), "#f3e8ef", 0, 0.01, 0));
+      g.add(mesh(box(0.4, 0.5, 0.03, 0.02), C.glass, 0, 0.5, -0.34), mesh(box(0.46, 0.56, 0.02, 0.02), C.dark, 0, 0.5, -0.36));
+      g.add(mesh(box(0.28, 0.06, 0.28, 0.03), C.dark, 0, 0.1, -0.05), mesh(box(0.08, 0.1, 0.08, 0.02), C.dark, 0, 0.05, -0.05));
+      const client = person(kit, people[0], 0, -0.05, true);
+      client.position.y = 0.1;
+      g.add(client);
+      g.add(mesh(box(0.34, 0.02, 0.34, 0.01), C.white, 0, 0.3, -0.05)); // the cape
+      const stylist = person(kit, people[1] ?? C.guest, 0.34, 0.1);
+      face(stylist, 0, -0.05);
+      const scissors = mesh(box(0.1, 0.015, 0.015, 0.005), C.dark, -0.12, 0.2, 0);
+      stylist.add(scissors);
+      g.add(stylist);
+      update = (t) => {
+        scissors.rotation.z = 0.5 * Math.sin(t * 9 + seed);
+        stylist.position.set(0.34 - 0.08 * Math.sin(t * 0.9 + seed), 0, 0.1 + 0.08 * Math.cos(t * 0.9 + seed));
+        face(stylist, 0, -0.05);
+      };
+      break;
+    }
     case "sport": {
       g.add(mesh(box(0.9, 0.03, 0.42, 0.015), C.teal, 0, 0.015, 0));
       const jumpers = people.slice(0, 2).map((c, i) => {
