@@ -32,6 +32,8 @@ export function ListsView({ kind, header }: { kind: List["kind"]; header: (newLi
   const [restock, setRestock] = useState<RestockSuggestion[]>([]);
   const [history, setHistory] = useState<Map<string, Known>>(new Map());
   const [title, setTitle] = useState("");
+  const [who, setWho] = useState<string | null>(null); // to-dos: set from the add bar, no need to open the item afterwards
+  const [due, setDue] = useState<string | null>(null);
   const [showDone, setShowDone] = useState(false);
   const [editing, setEditing] = useState<ListItem | null>(null);
   const [managing, setManaging] = useState<List | null>(null);
@@ -134,8 +136,16 @@ export function ListsView({ kind, header }: { kind: List["kind"]; header: (newLi
     const rows = lines
       .map(parseLine)
       .filter((r) => r.title && !onList.has(r.title.toLowerCase()))
-      .map((r) => ({ list_id: activeId, title: r.title, quantity: r.quantity, category: categoryFor(r.title) }));
+      .map((r) => ({
+        list_id: activeId,
+        title: r.title,
+        quantity: r.quantity,
+        category: categoryFor(r.title),
+        ...(isGrocery ? {} : { assignee_member_id: who, due_date: due }),
+      }));
     if (!rows.length) return;
+    setWho(null);
+    setDue(null);
     await supabase.from("list_items").insert(rows);
     loadItems();
     loadHistory();
@@ -229,10 +239,10 @@ export function ListsView({ kind, header }: { kind: List["kind"]; header: (newLi
                 addLines([title]);
                 setTitle("");
               }}
-              className="flex gap-2"
+              className="flex flex-wrap gap-2"
             >
               <input
-                className="input"
+                className="input min-w-0 flex-1 basis-40"
                 placeholder={isGrocery ? t("Add item, e.g. 2 milk (paste a whole list too)") : t("Add a to-do")}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -245,6 +255,12 @@ export function ListsView({ kind, header }: { kind: List["kind"]; header: (newLi
                   }
                 }}
               />
+              {!isGrocery && (
+                <>
+                  <div className="w-32"><MemberSelect value={who} onChange={setWho} placeholder={t("Who")} /></div>
+                  <input className="input w-auto" type="date" aria-label={t("Due")} value={due ?? ""} onChange={(e) => setDue(e.target.value || null)} />
+                </>
+              )}
               <button className="btn">{t("Add")}</button>
             </form>
             {autocomplete.length > 0 && (
