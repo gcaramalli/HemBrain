@@ -61,6 +61,11 @@ Routing:
 - Travels ("we went to Lisbon in July with Jennie", "Jenny has been to Japan", "where haven't we been?", "when did I
   last go to London?", trip ideas): get_travels (countries per person + the trips timeline). A dated trip → add_trips
   (ticks the country for everyone who went); a country with no date → add_countries. Pass countries as ISO codes or names.
+- Travel journal ("we're at the Silq hotel in Bangkok since 12 Nov", "today we visited Wat Pho, Charlie loved the boat",
+  "we moved to the beach in Kamala"): add_journal (kind "stay" for a hotel with its arrival date, and its departure when
+  known; kind "day" for what we did, one entry per day, written warmly in the family's voice from what they tell you).
+  Use the real date (ask if unsure); don't invent places, prices or times. "What did we do in Bangkok?" / "recap the
+  trip": get_journal. The same notebook is in the app, Travels → Guide → Journal.
 - "Send Jennie a little heart": send_gift (an emoji + optional short note, unwrapped in the app).
 - Birthdays of the family's own members (parents, kids): set_birthdate (they show in the calendar and the others are
   reminded the evening before). Weddings, friends' and relatives' birthdays, anniversaries: get_occasions / add_occasion. These are kept out of
@@ -1720,6 +1725,111 @@ export function registerTools(server: McpServer) {
       const { error } = await createAdminClient().from("trips").insert(rows);
       if (error) throw new Error(error.message);
       return text({ added: trips.map((x) => `${countryName(findCountry(x.country)!)} ${x.from ?? "(year unknown)"} — ${x.who.join(", ")}`) });
+    },
+  );
+
+  // ---- Travel journal: stays and day-by-day notes (Travels → Guide → Journal)
+
+  server.registerTool(
+    "add_journal",
+    {
+      title: "Write in the travel journal",
+      description:
+        "Add stays (a hotel or place we sleep, with arrival date and optional departure) and day notes (what we did that day) to the family's travel journal. Dates are YYYY-MM-DD. To close a stay later, call update_journal_stay.",
+      inputSchema: z.object({
+        entries: z
+          .array(
+            z.object({
+              kind: z.enum(["stay", "day"]),
+              date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("The day (stay: arrival date)"),
+              to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("Stay only: departure date, leave out while still there or unknown"),
+              title: z.string().max(200).optional().describe("Short headline of the day, or the hotel's name for a stay"),
+              text: z.string().max(4000).optional().describe("What we did, how it was; for a stay: area, notes"),
+              place: z.string().max(200).optional().describe("Hotel, beach, restaurant..."),
+              city: z.string().max(100).optional().describe("Bangkok, Phuket, Kamala..."),
+              country: z.string().optional().describe("ISO code or name, default Thailand"),
+              who: z.array(z.string()).optional().describe("First names, leave out for the whole family"),
+            }),
+          )
+          .min(1)
+          .max(50),
+      }),
+    },
+    async ({ entries }) => {
+      const rows = await Promise.all(
+        entries.map(async (x) => {
+          const country = x.country ? findCountry(x.country) : "TH";
+          if (!country) throw new Error(`Unknown country "${x.country}"`);
+          return {
+            family_id: familyId(),
+            country,
+            kind: x.kind,
+            entry_date: x.date,
+            end_date: x.kind === "stay" && x.to && x.to >= x.date ? x.to : null,
+            title: x.title?.trim() || null,
+            body: x.text?.trim() || null,
+            place: x.place?.trim() || null,
+            city: x.city?.trim() || null,
+            member_ids: ((await Promise.all((x.who ?? []).map((n) => memberIdByName(n)))) as string[]),
+            created_by: createdBy(),
+          };
+        }),
+      );
+      const { error } = await createAdminClient().from("journal_entries").insert(rows);
+      if (error) throw new Error(error.message);
+      return text({ added: rows.map((r) => `${r.entry_date} ${r.kind}: ${r.title ?? r.place ?? r.body?.slice(0, 40) ?? ""}`) });
+    },
+  );
+
+  server.registerTool(
+    "update_journal_stay",
+    {
+      title: "Close or change a stay",
+      description: "Set the departure date (or fix the name, city or arrival) of a stay in the travel journal, found by its place or title.",
+      inputSchema: z.object({
+        stay: z.string().min(2).describe("Part of the hotel's name or title"),
+        to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("Departure date"),
+        from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("Arrival date"),
+        title: z.string().max(200).optional(),
+        city: z.string().max(100).optional(),
+      }),
+    },
+    async ({ stay, to, from, title, city }) => {
+      const db = createAdminClient();
+      const { data } = await db.from("journal_entries").select("id, title, place, entry_date").eq("family_id", familyId()).eq("kind", "stay");
+      const n = stay.trim().toLowerCase();
+      const hits = (data ?? []).filter((r) => `${r.title ?? ""} ${r.place ?? ""}`.toLowerCase().includes(n));
+      if (hits.length !== 1) throw new Error(hits.length ? `Several stays match: ${hits.map((r) => r.title ?? r.place).join(", ")}` : `No stay matches "${stay}"`);
+      const patch: Record<string, string> = {};
+      if (to) patch.end_date = to;
+      if (from) patch.entry_date = from;
+      if (title) patch.title = title;
+      if (city) patch.city = city;
+      const { error } = await db.from("journal_entries").update(patch).eq("id", hits[0].id).eq("family_id", familyId());
+      if (error) throw new Error(error.message);
+      return text({ updated: hits[0].title ?? hits[0].place, ...patch });
+    },
+  );
+
+  server.registerTool(
+    "get_journal",
+    {
+      title: "Read the travel journal",
+      description: "The travel journal for a country (default Thailand): stays with their dates, then the day notes, oldest first. Use it for recaps and to avoid repeating a day already written.",
+      inputSchema: z.object({ country: z.string().optional().describe("ISO code or name, default Thailand") }),
+    },
+    async ({ country }) => {
+      const code = country ? findCountry(country) : "TH";
+      if (!code) throw new Error(`Unknown country "${country}"`);
+      const { data, error } = await createAdminClient()
+        .from("journal_entries")
+        .select("kind, entry_date, end_date, title, body, place, city")
+        .eq("family_id", familyId())
+        .eq("country", code)
+        .order("entry_date")
+        .order("created_at");
+      if (error) throw new Error(error.message);
+      return text({ country: countryName(code), stays: (data ?? []).filter((r) => r.kind === "stay"), days: (data ?? []).filter((r) => r.kind === "day") });
     },
   );
 

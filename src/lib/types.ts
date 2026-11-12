@@ -300,6 +300,22 @@ export type Trip = {
   created_at: string;
 };
 
+// Travel journal: a stay (hotel, arrival → departure) or a note about one day.
+export type JournalEntry = {
+  id: string;
+  country: string;
+  kind: "stay" | "day";
+  entry_date: string;
+  end_date: string | null;
+  title: string | null;
+  body: string | null;
+  place: string | null;
+  city: string | null;
+  member_ids: string[];
+  created_by: string | null;
+  created_at: string;
+};
+
 // Shared expenses (Home → Expenses): who paid, for whom, split equally.
 export type Expense = {
   id: string;

@@ -3,19 +3,21 @@
 import { useMemo, useState } from "react";
 import { useFamily } from "@/components/family-context";
 import { TravelsHeader } from "@/components/page-header";
+import { TravelJournal } from "@/components/travel-journal";
 import { BADGES, MAX_XP, XP, levelOf, useGuideProgress, xpOf, type Progress } from "@/lib/guides/progress";
 import { CARDS, CITIES, QUESTIONS, QUESTS, WORDS, WORD_GROUPS, type City, type L, type Place } from "@/lib/guides/thailand";
 
-type Tab = "play" | "learn" | "words" | "bangkok" | "phuket" | "quiz";
+type Tab = "journal" | "play" | "learn" | "words" | "bangkok" | "phuket" | "quiz";
 
 // A mini Lonely Planet for Thailand: cards to read, words to learn, Bangkok and Phuket in depth,
 // and a game on top (XP, levels, badges, quests, quiz). Progress is per person, in this browser.
 export default function GuidePage() {
   const { me, locale, t } = useFamily();
   const { p, ready, toggle, answer, reset } = useGuideProgress(me?.id);
-  const [tab, setTab] = useState<Tab>("play");
+  const [tab, setTab] = useState<Tab>("journal");
   const tx = (l: L) => (locale === "fr" ? l.fr : l.en);
   const tabs: { id: Tab; label: string }[] = [
+    { id: "journal", label: t("Journal") },
     { id: "play", label: t("Play") },
     { id: "learn", label: t("Cards") },
     { id: "words", label: t("Words") },
@@ -34,7 +36,9 @@ export default function GuidePage() {
           </button>
         ))}
       </div>
-      {!ready ? (
+      {tab === "journal" ? (
+        <TravelJournal />
+      ) : !ready ? (
         <div className="card h-40" />
       ) : tab === "play" ? (
         <Play p={p} tx={tx} toggle={toggle} reset={reset} />
