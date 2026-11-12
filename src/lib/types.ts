@@ -28,6 +28,8 @@ export type Member = {
   pickup_time: string | null;
   care_place: string | null;
   care_days: number[];
+  // Kids: off preschool until this date (first day back), no drop-offs / pick-ups expected before.
+  care_paused_until?: string | null;
   // Kids: current sizes (Wardrobe tile), e.g. "92" and "23".
   clothing_size: string | null;
   shoe_size: string | null;

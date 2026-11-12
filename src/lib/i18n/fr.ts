@@ -1192,4 +1192,6 @@ export const fr: Record<string, string> = {
   "What did we do today?": "Qu'est-ce qu'on a fait aujourd'hui ?",
   "Entry deleted": "Entrée supprimée",
   "Day {n}": "Jour {n}",
+  "No preschool until": "Pas de crèche jusqu'au",
+  "The first day back. Until then nothing is planned or reminded for drop-offs and pick-ups.": "Le premier jour de retour. D'ici là, plus de dépôts ni de récupérations prévus ou rappelés.",
 };

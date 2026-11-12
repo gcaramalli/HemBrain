@@ -32,6 +32,10 @@ export function KidSettingsSheet({ kid, open, onClose }: { kid: Member; open: bo
 }
 
 const WEEKDAYS = [1, 2, 3, 4, 5, 6, 7];
+const ymdLocal = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
 
 function KidSettings({ kid, onDone }: { kid: Member; onDone: () => void }) {
   const { supabase, t } = useFamily();
@@ -39,6 +43,7 @@ function KidSettings({ kid, onDone }: { kid: Member; onDone: () => void }) {
   const [dropoff, setDropoff] = useState(kid.dropoff_time?.slice(0, 5) ?? "08:00");
   const [pickup, setPickup] = useState(kid.pickup_time?.slice(0, 5) ?? "16:00");
   const [place, setPlace] = useState(kid.care_place ?? "");
+  const [pausedUntil, setPausedUntil] = useState(kid.care_paused_until ?? "");
   const [daysOn, setDaysOn] = useState<number[]>(kid.care_days ?? [1, 2, 3, 4, 5]);
   // Monday 2 Jan 2023 + n: weekday names in the account's language.
   const dayName = (iso: number) => fmtDate(new Date(2023, 0, 1 + iso), { weekday: "short" });
@@ -47,7 +52,14 @@ function KidSettings({ kid, onDone }: { kid: Member; onDone: () => void }) {
     e.preventDefault();
     await supabase
       .from("members")
-      .update({ dropoff_time: dropoff, pickup_time: pickup, care_place: place.trim() || null, care_days: [...daysOn].sort() })
+      .update({
+        dropoff_time: dropoff,
+        pickup_time: pickup,
+        care_place: place.trim() || null,
+        care_days: [...daysOn].sort(),
+        // Only sent when changed, so saving the rest still works before migration 0035 is applied.
+        ...((pausedUntil || null) !== (kid.care_paused_until ?? null) ? { care_paused_until: pausedUntil || null } : {}),
+      })
       .eq("id", kid.id);
     router.refresh();
     onDone();
@@ -83,6 +95,18 @@ function KidSettings({ kid, onDone }: { kid: Member; onDone: () => void }) {
             </button>
           ))}
         </div>
+      </div>
+      <div>
+        <span className="label">{t("No preschool until")}</span>
+        <div className="flex gap-2">
+          <input className="input" type="date" value={pausedUntil} min={ymdLocal()} onChange={(e) => setPausedUntil(e.target.value)} />
+          {pausedUntil && (
+            <button type="button" className="btn-ghost" onClick={() => setPausedUntil("")}>
+              {t("Clear")}
+            </button>
+          )}
+        </div>
+        <p className="mt-1 text-xs text-muted">{t("The first day back. Until then nothing is planned or reminded for drop-offs and pick-ups.")}</p>
       </div>
       <p className="text-xs text-muted">{t("New drop-offs and pick-ups use these times. Ones already planned keep theirs.")}</p>
       <button className="btn">{t("Save")}</button>

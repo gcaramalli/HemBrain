@@ -24,7 +24,7 @@ export async function todayBrief(supabase: SupabaseClient, ctx: McpContext, even
   const [eventsJson, occJson, { data: members }, { data: answers }, { data: todos }, { data: papers }] = await Promise.all([
     callTool(ctx, "get_events", { from: today, days: 2 }),
     callTool(ctx, "get_occasions", { days: 7 }),
-    supabase.from("members").select("id, name, profile_id, care_days"),
+    supabase.from("members").select("*"),
     supabase.from("care_availability").select("kid_id, day, kind, member_id, available").gte("day", today).lte("day", tomorrow),
     supabase.from("list_items").select("title, due_date, lists!inner(kind)").eq("lists.kind", "todo").eq("done", false).order("due_date", { nullsFirst: false }).limit(12),
     supabase.from("papers").select("*").eq("ended", false),
@@ -65,7 +65,7 @@ export async function todayBrief(supabase: SupabaseClient, ctx: McpContext, even
   return { focus, text: lines.join("\n") };
 }
 
-type Person = Pick<Member, "id" | "name" | "profile_id" | "care_days">;
+type Person = Pick<Member, "id" | "name" | "profile_id" | "care_days" | "care_paused_until">;
 
 // Each kid's drop-offs and pick-ups on `days`: who is going, or that nobody has
 // confirmed yet (and who said they can or can't).
@@ -97,7 +97,7 @@ export async function weekBrief(supabase: SupabaseClient, ctx: McpContext, kidId
   const days = Array.from({ length: 7 }, (_, i) => ymd(Date.now() + i * 86400000));
   const [eventsJson, { data: members }, { data: answers }] = await Promise.all([
     callTool(ctx, "get_events", { from: days[0], days: 7 }),
-    supabase.from("members").select("id, name, profile_id, care_days"),
+    supabase.from("members").select("*"),
     supabase.from("care_availability").select("kid_id, day, kind, member_id, available").gte("day", days[0]).lte("day", days[6]),
   ]);
   const events = JSON.parse(eventsJson) as Ev[];

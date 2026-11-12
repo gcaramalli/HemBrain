@@ -26,7 +26,9 @@ export function usualTime(kid: Member, kind: CareKind) {
 
 // ISO weekday (Monday = 1) of a local date.
 export const isoWeekday = (d: Date) => ((d.getDay() + 6) % 7) + 1;
-export const isCareDay = (kid: Member, d: Date) => (kid.care_days ?? [1, 2, 3, 4, 5]).includes(isoWeekday(d));
+// Not a care day while the kid is off preschool (care_paused_until = first day back).
+export const isCareDay = (kid: Pick<Member, "care_days" | "care_paused_until">, d: Date) =>
+  !(kid.care_paused_until && dayKey(d) < kid.care_paused_until) && (kid.care_days ?? [1, 2, 3, 4, 5]).includes(isoWeekday(d));
 
 // The drop-off or pick-up of `kid` on `day`, if planned.
 export function findSlot(events: EventOccurrence[], kid: Member, day: string, kind: CareKind) {

@@ -61,6 +61,8 @@ Routing:
 - Travels ("we went to Lisbon in July with Jennie", "Jenny has been to Japan", "where haven't we been?", "when did I
   last go to London?", trip ideas): get_travels (countries per person + the trips timeline). A dated trip → add_trips
   (ticks the country for everyone who went); a country with no date → add_countries. Pass countries as ISO codes or names.
+- A kid off preschool for a while ("Charlie isn't at preschool until Monday 23 Nov"): set_preschool_break with the first
+  day back; it silences the "nobody picks him up" reminders. No "until" = back to normal.
 - Travel journal ("we're at the Silq hotel in Bangkok since 12 Nov", "today we visited Wat Pho, Charlie loved the boat",
   "we moved to the beach in Kamala"): add_journal (kind "stay" for a hotel with its arrival date, and its departure when
   known; kind "day" for what we did, one entry per day, written warmly in the family's voice from what they tell you).
@@ -1725,6 +1727,25 @@ export function registerTools(server: McpServer) {
       const { error } = await createAdminClient().from("trips").insert(rows);
       if (error) throw new Error(error.message);
       return text({ added: trips.map((x) => `${countryName(findCountry(x.country)!)} ${x.from ?? "(year unknown)"} — ${x.who.join(", ")}`) });
+    },
+  );
+
+  server.registerTool(
+    "set_preschool_break",
+    {
+      title: "Kid off preschool for a while",
+      description:
+        "Say that a kid is not going to preschool until a date (holiday, trip, illness): no drop-off or pick-up is expected, planned or reminded before that day. Pass the first day back, or leave 'until' out to end the break.",
+      inputSchema: z.object({
+        kid: z.string().optional().describe("The kid's first name, optional when the family has one kid"),
+        until: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("First day back, YYYY-MM-DD"),
+      }),
+    },
+    async ({ kid, until }) => {
+      const k = await kidByName(kid);
+      const { error } = await createAdminClient().from("members").update({ care_paused_until: until ?? null }).eq("id", k.id).eq("family_id", familyId());
+      if (error) throw new Error(error.message);
+      return text(until ? `${k.name} is off preschool until ${until} (first day back).` : `${k.name} goes back to the usual preschool routine.`);
     },
   );
 

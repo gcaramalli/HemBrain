@@ -1192,4 +1192,6 @@ export const sv: Record<string, string> = {
   "What did we do today?": "Vad gjorde vi idag?",
   "Entry deleted": "Inlägg raderat",
   "Day {n}": "Dag {n}",
+  "No preschool until": "Ingen förskola till",
+  "The first day back. Until then nothing is planned or reminded for drop-offs and pick-ups.": "Första dagen tillbaka. Fram till dess planeras eller påminns inga lämningar och hämtningar.",
 };
