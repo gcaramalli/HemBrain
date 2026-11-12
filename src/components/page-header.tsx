@@ -104,6 +104,7 @@ export function TravelsHeader({ back, backLabel, action }: { back: string; backL
         items={[
           { href: "/travels", label: t("Map") },
           { href: "/travels/timeline", label: t("Timeline") },
+          { href: "/travels/guide", label: t("Guide") },
         ]}
       />
     </PageHeader>

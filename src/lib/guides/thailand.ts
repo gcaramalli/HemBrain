@@ -1,0 +1,318 @@
+// Mini Lonely Planet for Thailand, with Bangkok and Phuket in depth. Written by hand (no network, no AI call):
+// content is stored in English and French, other app languages show the English text.
+// Prices and opening hours drift: they are indicative, check on the spot.
+
+export type L = { en: string; fr: string };
+const L = (en: string, fr: string): L => ({ en, fr });
+
+export type Card = { id: string; emoji: string; title: L; lead: L; points: L[] };
+export type Word = { id: string; thai: string; say: string; en: string; fr: string; group: "basics" | "eat" | "move" | "numbers" | "soul" };
+export type Place = { id: string; emoji: string; name: string; what: L; tip?: L; kids?: boolean; area?: string };
+export type City = {
+  id: "bangkok" | "phuket";
+  emoji: string;
+  name: string;
+  thai: string;
+  intro: L;
+  facts: { label: L; value: L }[];
+  areas: { name: string; what: L }[];
+  places: Place[];
+  eat: Place[];
+  tips: L[];
+  center: string; // for "open in maps"
+};
+export type Quest = { id: string; emoji: string; title: L; hint?: L; where?: "bangkok" | "phuket" };
+export type Question = { id: string; q: L; options: L[]; answer: number; why: L };
+
+export const CARDS: Card[] = [
+  {
+    id: "history",
+    emoji: "📜",
+    title: L("History in 7 dates", "L'histoire en 7 dates"),
+    lead: L("Thailand is the only country in South-East Asia never colonised by a European power.", "La Thaïlande est le seul pays d'Asie du Sud-Est à n'avoir jamais été colonisé par une puissance européenne."),
+    points: [
+      L("1238 · Sukhothai, the first Thai kingdom: 'dawn of happiness'. Thai script is born around 1283.", "1238 · Sukhothai, premier royaume thaï : « l'aube du bonheur ». L'écriture thaïe naît vers 1283."),
+      L("1351–1767 · Ayutthaya, a rich trading capital that Persians, Chinese, Japanese and Europeans visited. Burma burns it in 1767.", "1351–1767 · Ayutthaya, capitale marchande où passent Perses, Chinois, Japonais et Européens. La Birmanie la détruit en 1767."),
+      L("1767 · King Taksin regroups at Thonburi, across the river from today's Bangkok.", "1767 · Le roi Taksin se replie à Thonburi, en face de l'actuel Bangkok."),
+      L("1782 · Rama I founds Bangkok and the Chakri dynasty, still on the throne today.", "1782 · Rama Ier fonde Bangkok et la dynastie Chakri, toujours sur le trône."),
+      L("1851–1910 · Mongkut and Chulalongkorn (Rama IV, V) modernise the country and trade land to the French and British to stay independent. Slavery ends in 1905.", "1851–1910 · Mongkut et Chulalongkorn (Rama IV, V) modernisent le pays et cèdent des territoires aux Français et aux Britanniques pour rester indépendants. L'esclavage disparaît en 1905."),
+      L("1932 · A bloodless revolution turns the absolute monarchy into a constitutional one. 'Siam' becomes 'Thailand' ('land of the free') in 1939.", "1932 · Une révolution sans sang transforme la monarchie absolue en monarchie constitutionnelle. Le « Siam » devient « Thaïlande » (« pays des hommes libres ») en 1939."),
+      L("1946–2016 · Bhumibol (Rama IX) reigns 70 years, the longest in Thai history. His son Vajiralongkorn (Rama X) succeeds him.", "1946–2016 · Bhumibol (Rama IX) règne 70 ans, record de l'histoire thaïe. Son fils Vajiralongkorn (Rama X) lui succède."),
+    ],
+  },
+  {
+    id: "geo",
+    emoji: "🗺️",
+    title: L("Geography", "Géographie"),
+    lead: L("About the size of France (513,000 km²) and shaped like an elephant's head: the north is the ear, the south peninsula is the trunk.", "À peu près la taille de la France (513 000 km²), en forme de tête d'éléphant : le nord est l'oreille, la péninsule du sud est la trompe."),
+    points: [
+      L("5 regions: the mountainous North (Chiang Mai), the Northeast Isan (rice, spicy food), the Central plain around Bangkok, the East coast, and the South (islands and Andaman beaches).", "5 régions : le Nord montagneux (Chiang Mai), l'Isan au nord-est (riz, cuisine pimentée), la plaine centrale autour de Bangkok, la côte Est, et le Sud (îles et plages de l'Andaman)."),
+      L("Two seas: the Gulf of Thailand (east of the peninsula: Koh Samui, Pattaya) and the Andaman Sea (west: Phuket, Krabi, Phi Phi).", "Deux mers : le golfe de Thaïlande (côté est : Koh Samui, Pattaya) et la mer d'Andaman (côté ouest : Phuket, Krabi, Phi Phi)."),
+      L("The Chao Phraya river runs through Bangkok to the Gulf. Highest point: Doi Inthanon, 2,565 m.", "Le fleuve Chao Phraya traverse Bangkok jusqu'au golfe. Point culminant : Doi Inthanon, 2 565 m."),
+      L("About 66 million people; Bangkok has more than 10 million, 20 times the next city.", "Environ 66 millions d'habitants ; Bangkok en compte plus de 10 millions, 20 fois la ville suivante."),
+      L("Three seasons: hot (Mar–May), rainy (Jun–Oct), cool and dry (Nov–Feb). November is the start of the best season, and Andaman seas calm down.", "Trois saisons : chaude (mars–mai), des pluies (juin–oct.), fraîche et sèche (nov.–fév.). Novembre ouvre la meilleure saison, et la mer d'Andaman se calme."),
+      L("Time zone UTC+7: 6 hours ahead of Sweden in winter (5 in summer time). Drives on the left.", "Fuseau UTC+7 : 6 heures de plus qu'en Suède en hiver (5 en heure d'été). On roule à gauche."),
+    ],
+  },
+  {
+    id: "religion",
+    emoji: "🛕",
+    title: L("Religion", "Religion"),
+    lead: L("About 93% of Thais are Theravada Buddhists, but daily life mixes Buddhism, Hindu-Brahmin rites and spirit beliefs.", "Environ 93 % des Thaïs sont bouddhistes theravada, mais le quotidien mêle bouddhisme, rites hindous-brahmaniques et croyances aux esprits."),
+    points: [
+      L("Merit (bun): you do good, give to monks, release a bird or a fish… to improve your next life. This explains the offerings everywhere.", "Le mérite (bun) : on fait le bien, on donne aux moines, on libère un oiseau ou un poisson… pour améliorer sa prochaine vie. D'où les offrandes partout."),
+      L("A 'wat' is a temple-monastery. Monks wear saffron robes, many Thai men spend a few weeks or months as a monk once in their life.", "Un « wat » est un temple-monastère. Les moines portent la robe safran, et beaucoup de Thaïs passent quelques semaines ou mois en robe une fois dans leur vie."),
+      L("Spirit houses (san phra phum): little shrines at the edge of homes and hotels, with flowers, water, sometimes a Fanta. Never touch or lean on one.", "Les maisons des esprits (san phra phum) : petits autels à l'entrée des maisons et hôtels, avec fleurs, eau, parfois un Fanta. On ne les touche pas, on ne s'y appuie pas."),
+      L("Islam is about 5% (mostly the deep south, with mosques and halal food in Phuket); Chinese temples and the Hokkien vegetarian festival colour Phuket in October.", "L'islam représente environ 5 % (surtout l'extrême sud, avec mosquées et cuisine halal à Phuket) ; les temples chinois et le festival végétarien hokkien colorent Phuket en octobre."),
+      L("Big dates: Songkran (13–15 April, water fights for the New Year), Makha / Visakha / Asalha Bucha (Buddhist full moons), and Loy Krathong, the full moon of November: people float little lotus-shaped boats with a candle on rivers and ponds. In 2026 it should fall around 24 November.", "Grandes dates : Songkran (13–15 avril, batailles d'eau du Nouvel An), Makha / Visakha / Asalha Bucha (pleines lunes bouddhistes), et Loy Krathong, la pleine lune de novembre : on fait flotter de petits bateaux en lotus avec une bougie sur les rivières et étangs. En 2026, autour du 24 novembre."),
+    ],
+  },
+  {
+    id: "respect",
+    emoji: "🙏",
+    title: L("Respect & etiquette", "Respect et savoir-vivre"),
+    lead: L("Thais forgive almost everything with a smile, except three things: the monarchy, Buddha, and losing your temper.", "Les Thaïs pardonnent presque tout avec un sourire, sauf trois choses : la monarchie, le Bouddha et la colère."),
+    points: [
+      L("The wai: palms together, a slight bow. Higher hands = more respect. As a visitor you answer a wai, you don't need to start one with a waiter or a child.", "Le wai : paumes jointes, légère inclinaison. Plus les mains sont hautes, plus c'est respectueux. Visiteur, on répond à un wai, on n'a pas à le faire en premier à un serveur ou un enfant."),
+      L("The head is the highest part of the body, the feet the lowest. Don't touch heads (except that Thais will happily pat Charlie's: smile), don't point your feet at people or Buddha images, don't step over someone.", "La tête est la partie la plus haute, les pieds la plus basse. On ne touche pas les têtes (sauf que les Thaïs caresseront volontiers celle de Charlie : souris), on ne montre pas ses pieds aux gens ou aux Bouddhas, on n'enjambe personne."),
+      L("Temples and many homes: shoes off. Shoulders and knees covered. Never climb on or pose rudely with a Buddha statue.", "Temples et beaucoup de maisons : chaussures retirées. Épaules et genoux couverts. Jamais grimper sur un Bouddha ni poser de façon irrespectueuse."),
+      L("Women must not touch a monk or hand him something directly: put it down, or let a man pass it.", "Les femmes ne touchent pas un moine et ne lui tendent rien directement : on pose l'objet, ou un homme le transmet."),
+      L("The king and royal family: never mock or criticise them. Lèse-majesté (article 112) is a serious crime. Stand when the royal anthem plays (8:00 and 18:00 in parks, before films).", "Le roi et la famille royale : on ne se moque pas, on ne critique pas. Le crime de lèse-majesté (article 112) est très grave. On se lève quand l'hymne royal joue (8 h et 18 h dans les parcs, avant les films)."),
+      L("Kreng jai: not wanting to impose, avoiding open conflict. Bargain with a smile, never shout. 'Jai yen' = 'cool heart'.", "Kreng jai : ne pas vouloir déranger, éviter le conflit ouvert. On marchande en souriant, jamais en criant. « Jai yen » = « cœur frais »."),
+      L("E-cigarettes and vapes are illegal in Thailand (fines, confiscation). Don't bring them.", "Les cigarettes électroniques et vapes sont interdites en Thaïlande (amendes, confiscation). Ne les emportez pas."),
+    ],
+  },
+  {
+    id: "food",
+    emoji: "🍜",
+    title: L("What to eat", "À manger"),
+    lead: L("Four flavours in one meal: sweet, sour, salty, spicy. Rice is the centre; 'to eat' literally says 'eat rice' (kin khao).", "Quatre saveurs dans un repas : sucré, acide, salé, pimenté. Le riz est au centre ; « manger » se dit littéralement « manger du riz » (kin khao)."),
+    points: [
+      L("Pad kra pao (basil stir-fry with a fried egg), pad thai, khao pad (fried rice), tom yum goong (spicy shrimp soup), tom kha kai (coconut chicken soup), som tam (green papaya salad, ask 'mai phet').", "Pad kra pao (sauté au basilic avec œuf au plat), pad thaï, khao pad (riz sauté), tom yum goong (soupe de crevettes pimentée), tom kha kai (soupe de poulet au coco), som tam (salade de papaye verte, dire « mai phet »)."),
+      L("Easy for a toddler: khao pad, khao man gai (chicken rice), kai jeow (omelette), moo ping (grilled pork skewers), fruit, mango sticky rice.", "Faciles pour un tout-petit : khao pad, khao man gai (riz au poulet), kai jeow (omelette), moo ping (brochettes de porc grillées), fruits, riz gluant à la mangue."),
+      L("Spoon and fork: the fork pushes food onto the spoon, the spoon goes in the mouth. Chopsticks only for noodle soups.", "Cuillère et fourchette : la fourchette pousse la nourriture sur la cuillère, la cuillère va dans la bouche. Baguettes seulement pour les soupes de nouilles."),
+      L("Street food is a safe bet where there is a queue of locals and everything is cooked in front of you. Tap water is not for drinking: sealed bottles, ice is generally made safely.", "La street food est sûre là où il y a une file de locaux et que tout est cuit devant vous. L'eau du robinet ne se boit pas : bouteilles scellées, la glace est en général fabriquée proprement."),
+      L("Drinks to try: Thai iced tea (cha yen), fresh coconut, fresh sugar cane juice, Chang or Singha beer. A 7-Eleven toasted sandwich is a cult snack.", "À goûter : thé glacé thaï (cha yen), noix de coco fraîche, jus de canne, bière Chang ou Singha. Le toast du 7-Eleven est un snack culte."),
+    ],
+  },
+  {
+    id: "practical",
+    emoji: "💳",
+    title: L("Practical", "Pratique"),
+    lead: L("Facts that move. Check anything with a price before you rely on it.", "Des infos qui bougent. Vérifie tout ce qui a un prix avant de t'y fier."),
+    points: [
+      L("Currency: baht (THB, ฿). Roughly 35–40 ฿ for 1 €: check the rate today. ATMs charge about 220 ฿ per withdrawal: take out big amounts, pay by card where you can (no foreign fee card).", "Monnaie : le baht (THB, ฿). Environ 35–40 ฿ pour 1 € : vérifie le taux du jour. Les distributeurs prélèvent ~220 ฿ par retrait : retire de grosses sommes, paie par carte quand c'est possible (carte sans frais à l'étranger)."),
+      L("Grab (like Uber) works in Bangkok and Phuket and avoids haggling. Taxi meters: insist on 'meter'. Tuk-tuks: always agree the price first.", "Grab (comme Uber) marche à Bangkok et Phuket et évite le marchandage. Taxis : exigez le « meter ». Tuk-tuks : toujours fixer le prix avant."),
+      L("Car seats are rare in taxis and Grab. Charlie: bring a light one or a harness, and keep the child on the back seat.", "Les sièges auto sont rares dans les taxis et Grab. Charlie : emporter un siège léger ou un harnais, et rester à l'arrière."),
+      L("Sun and bugs: SPF 50, hat, mosquito repellent (dengue exists), drink often. Pharmacies are everywhere and well stocked.", "Soleil et moustiques : SPF 50, chapeau, anti-moustiques (la dengue existe), boire souvent. Les pharmacies sont partout et bien fournies."),
+      L("Plug: types A, B, C (same as Europe's C, so your charger fits, 220 V).", "Prises : types A, B, C (le C est celui de l'Europe, ton chargeur passe, 220 V)."),
+      L("Emergency: 191 police, 1669 ambulance, 1155 tourist police (English-speaking).", "Urgences : 191 police, 1669 ambulance, 1155 police touristique (anglophone)."),
+      L("Classic scam in Bangkok: a friendly stranger says the Grand Palace is 'closed today' and sends you on a tuk-tuk 'tour'. Check the opening at the gate.", "Arnaque classique à Bangkok : un inconnu sympa dit que le Grand Palais est « fermé aujourd'hui » et t'envoie en tuk-tuk pour un « tour ». Vérifie à l'entrée."),
+    ],
+  },
+];
+
+export const WORDS: Word[] = [
+  { id: "hello", thai: "สวัสดี", say: "sa-wat-dee", en: "Hello / goodbye", fr: "Bonjour / au revoir", group: "basics" },
+  { id: "khrap", thai: "ครับ / ค่ะ", say: "khrap / kha", en: "Polite ending: men say khrap, women say kha", fr: "Politesse finale : khrap pour les hommes, kha pour les femmes", group: "basics" },
+  { id: "thanks", thai: "ขอบคุณ", say: "khop khun", en: "Thank you", fr: "Merci", group: "basics" },
+  { id: "sorry", thai: "ขอโทษ", say: "khor thot", en: "Sorry / excuse me", fr: "Pardon / excusez-moi", group: "basics" },
+  { id: "mpr", thai: "ไม่เป็นไร", say: "mai pen rai", en: "No problem, never mind", fr: "Pas de souci, ce n'est rien", group: "soul" },
+  { id: "yes", thai: "ใช่", say: "chai", en: "Yes (right)", fr: "Oui (c'est ça)", group: "basics" },
+  { id: "no", thai: "ไม่ใช่", say: "mai chai", en: "No (not right)", fr: "Non (ce n'est pas ça)", group: "basics" },
+  { id: "dontwant", thai: "ไม่เอา", say: "mai ao", en: "I don't want it (polite refusal)", fr: "Je n'en veux pas (refus poli)", group: "basics" },
+  { id: "howmuch", thai: "เท่าไหร่", say: "tao rai", en: "How much?", fr: "Combien ?", group: "eat" },
+  { id: "expensive", thai: "แพงไป", say: "paeng pai", en: "Too expensive", fr: "Trop cher", group: "eat" },
+  { id: "discount", thai: "ลดได้ไหม", say: "lot dai mai", en: "Can you lower it?", fr: "Vous pouvez baisser ?", group: "eat" },
+  { id: "tasty", thai: "อร่อย", say: "a-roy", en: "Delicious", fr: "Délicieux", group: "eat" },
+  { id: "notspicy", thai: "ไม่เผ็ด", say: "mai phet", en: "Not spicy", fr: "Pas pimenté", group: "eat" },
+  { id: "littlespicy", thai: "เผ็ดนิดหน่อย", say: "phet nit noi", en: "A little spicy", fr: "Un peu pimenté", group: "eat" },
+  { id: "water", thai: "น้ำเปล่า", say: "nam plao", en: "Plain water", fr: "Eau plate", group: "eat" },
+  { id: "nocoriander", thai: "ไม่ใส่ผักชี", say: "mai sai phak chi", en: "No coriander", fr: "Sans coriandre", group: "eat" },
+  { id: "bill", thai: "เช็คบิล", say: "check bin", en: "The bill, please", fr: "L'addition, s'il vous plaît", group: "eat" },
+  { id: "toilet", thai: "ห้องน้ำอยู่ที่ไหน", say: "hong nam yu thi nai", en: "Where is the toilet?", fr: "Où sont les toilettes ?", group: "move" },
+  { id: "left", thai: "ซ้าย", say: "sai", en: "Left", fr: "Gauche", group: "move" },
+  { id: "right", thai: "ขวา", say: "khwa", en: "Right", fr: "Droite", group: "move" },
+  { id: "straight", thai: "ตรงไป", say: "trong pai", en: "Straight on", fr: "Tout droit", group: "move" },
+  { id: "stop", thai: "หยุดตรงนี้", say: "yut trong ni", en: "Stop here", fr: "Arrêtez-vous ici", group: "move" },
+  { id: "help", thai: "ช่วยด้วย", say: "chuay duay", en: "Help!", fr: "Au secours !", group: "move" },
+  { id: "n1", thai: "หนึ่ง", say: "nueng", en: "1", fr: "1", group: "numbers" },
+  { id: "n2", thai: "สอง", say: "song", en: "2", fr: "2", group: "numbers" },
+  { id: "n3", thai: "สาม", say: "sam", en: "3", fr: "3", group: "numbers" },
+  { id: "n4", thai: "สี่", say: "si", en: "4", fr: "4", group: "numbers" },
+  { id: "n5", thai: "ห้า", say: "ha", en: "5", fr: "5", group: "numbers" },
+  { id: "n10", thai: "สิบ", say: "sip", en: "10", fr: "10", group: "numbers" },
+  { id: "n100", thai: "ร้อย", say: "roi", en: "100", fr: "100", group: "numbers" },
+  { id: "sanuk", thai: "สนุก", say: "sa-nook", en: "Fun: life should be sanuk", fr: "Amusant : la vie doit être sanuk", group: "soul" },
+  { id: "sabai", thai: "สบาย", say: "sa-baï", en: "Comfortable, relaxed ('sabai sabai')", fr: "À l'aise, détendu (« sabai sabai »)", group: "soul" },
+  { id: "555", thai: "๕๕๕", say: "ha ha ha", en: "'5' is 'ha' so 555 is how Thais type LOL", fr: "« 5 » se dit « ha » : 555 = MDR en thaï", group: "soul" },
+  { id: "farang", thai: "ฝรั่ง", say: "fa-rang", en: "Foreigner (also guava). Not an insult.", fr: "Étranger occidental (et aussi la goyave). Pas une insulte.", group: "soul" },
+];
+
+export const WORD_GROUPS: { id: Word["group"]; label: L }[] = [
+  { id: "basics", label: L("Basics", "Les bases") },
+  { id: "eat", label: L("Eating & shopping", "Manger et acheter") },
+  { id: "move", label: L("Getting around", "Se déplacer") },
+  { id: "numbers", label: L("Numbers", "Chiffres") },
+  { id: "soul", label: L("Thai spirit", "Esprit thaï") },
+];
+
+export const CITIES: City[] = [
+  {
+    id: "bangkok",
+    emoji: "🏙️",
+    name: "Bangkok",
+    thai: "กรุงเทพฯ · Krung Thep",
+    center: "Bangkok, Thailand",
+    intro: L(
+      "Thais call it Krung Thep, 'city of angels'. Its full ceremonial name is the longest city name in the world (168 letters). A hot, loud, generous mega-city of temples, canals, skyscrapers and food at every corner.",
+      "Les Thaïs l'appellent Krung Thep, « la cité des anges ». Son nom officiel complet est le plus long nom de ville du monde (168 lettres). Une mégapole chaude, bruyante et généreuse : temples, canaux, gratte-ciels et nourriture à chaque coin de rue.",
+    ),
+    facts: [
+      { label: L("Founded", "Fondée"), value: L("1782 by Rama I", "1782 par Rama Ier") },
+      { label: L("People", "Habitants"), value: L("10+ million", "Plus de 10 millions") },
+      { label: L("Best time", "Meilleure période"), value: L("Nov–Feb (cooler, dry)", "Nov.–fév. (frais, sec)") },
+      { label: L("Getting around", "Se déplacer"), value: L("BTS / MRT, river boat, Grab", "BTS / MRT, bateau, Grab") },
+    ],
+    areas: [
+      { name: "Rattanakosin", what: L("Old royal town: Grand Palace, Wat Pho, Wat Arun across the river. Cover up, go early.", "Vieille ville royale : Grand Palais, Wat Pho, Wat Arun de l'autre côté du fleuve. Couvrez-vous, venez tôt.") },
+      { name: "Chinatown (Yaowarat)", what: L("Gold shops by day, an enormous street food scene from about 18:00.", "Bijouteries le jour, énorme scène de street food à partir de 18 h environ.") },
+      { name: "Siam / Sukhumvit", what: L("Malls, BTS, rooftops, cafés. Modern Bangkok, air-conditioned relief.", "Centres commerciaux, BTS, rooftops, cafés. Bangkok moderne, clim bienvenue.") },
+      { name: "Riverside", what: L("Chao Phraya hotels, Asiatique night market, express boats.", "Hôtels sur le Chao Phraya, marché de nuit Asiatique, bateaux express.") },
+      { name: "Old Town / Khao San", what: L("Backpacker street, loud and cheap; fun for one evening, not for a toddler's bedtime.", "Rue des routards, bruyante et pas chère ; sympa une soirée, pas à l'heure du coucher d'un tout-petit.") },
+    ],
+    places: [
+      { id: "bkk-palace", emoji: "👑", name: "Grand Palace & Wat Phra Kaew", area: "Rattanakosin", what: L("The royal complex and the Emerald Buddha, the most sacred image in Thailand. Strict dress code (shoulders and knees), a hot and crowded morning.", "Le complexe royal et le Bouddha d'Émeraude, l'image la plus sacrée de Thaïlande. Tenue stricte (épaules et genoux), matinée chaude et bondée."), tip: L("Arrive at opening (about 8:30). Ignore anyone saying it's closed.", "Arrive à l'ouverture (vers 8 h 30). Ignore qui te dit que c'est fermé.") },
+      { id: "bkk-pho", emoji: "😴", name: "Wat Pho", area: "Rattanakosin", what: L("A 46 m long reclining Buddha with mother-of-pearl feet, and the home of traditional Thai massage.", "Un Bouddha couché de 46 m avec des pieds en nacre, et le berceau du massage thaï traditionnel."), tip: L("Massage school on site, book ahead or walk in early.", "École de massage sur place, réserve ou viens tôt.") },
+      { id: "bkk-arun", emoji: "🌅", name: "Wat Arun", area: "Thonburi", what: L("Temple of Dawn, a steep prang covered in porcelain. Cross by the little ferry from Tha Tien, climb a few steps.", "Temple de l'Aube, un prang escarpé couvert de porcelaine. Traversée par le petit ferry depuis Tha Tien, quelques marches à gravir."), tip: L("Best light at sunset from the other bank.", "Meilleure lumière au coucher du soleil depuis l'autre rive."), kids: true },
+      { id: "bkk-boat", emoji: "⛴️", name: "Chao Phraya Express Boat", area: "River", what: L("The cheapest and coolest way to move: hop between the old town, Chinatown and Asiatique for a few baht.", "Le moyen le moins cher et le plus frais : sauter entre vieille ville, Chinatown et Asiatique pour quelques bahts."), kids: true },
+      { id: "bkk-lumphini", emoji: "🦎", name: "Lumphini Park", area: "Silom", what: L("Green lung with giant monitor lizards roaming freely, pedal boats, and Bangkokians doing tai chi at dawn.", "Poumon vert avec des varans géants en liberté, pédalos, et Bangkokois qui font du tai-chi à l'aube."), kids: true },
+      { id: "bkk-chatuchak", emoji: "🛍️", name: "Chatuchak Weekend Market", area: "North", what: L("15,000 stalls, Saturday and Sunday. Clothes, plants, pets, street food. Go with cash and water.", "15 000 stands, samedi et dimanche. Vêtements, plantes, animaux, street food. Viens avec du cash et de l'eau.") },
+      { id: "bkk-yaowarat", emoji: "🥟", name: "Yaowarat Road at night", area: "Chinatown", what: L("Neon, smoke and seafood: the best street food street of the city after dark.", "Néons, fumée et fruits de mer : la meilleure rue de street food de la ville après la tombée de la nuit."), tip: L("Go with a hungry stomach and small bills.", "Viens affamé avec de la petite monnaie.") },
+      { id: "bkk-jim", emoji: "🏡", name: "Jim Thompson House", area: "Siam", what: L("Traditional teak houses of the American who revived Thai silk, and who vanished in Malaysia in 1967.", "Maisons traditionnelles en teck de l'Américain qui a relancé la soie thaïe, disparu en Malaisie en 1967.") },
+      { id: "bkk-sky", emoji: "🌆", name: "Mahanakhon SkyWalk", area: "Silom", what: L("A glass floor 314 m up, and the best 360° view of the city.", "Un sol en verre à 314 m et la meilleure vue à 360° sur la ville.") },
+      { id: "bkk-ocean", emoji: "🐠", name: "Sea Life Bangkok Ocean World", area: "Siam Paragon", what: L("An aquarium inside a mall: a rain-day plan with a toddler.", "Un aquarium dans un centre commercial : plan jour de pluie avec un tout-petit."), kids: true },
+      { id: "bkk-maeklong", emoji: "🚂", name: "Maeklong Railway Market (day trip)", area: "Samut Songkhram", what: L("A train squeezes through a market, stalls folding back a few seconds, then reopening. About 1 h 30 away.", "Un train se faufile à travers un marché, les étals se replient quelques secondes puis se rouvrent. À environ 1 h 30."), kids: true },
+      { id: "bkk-ayutthaya", emoji: "🗿", name: "Ayutthaya (day trip)", area: "North", what: L("The ruined old capital, famous for a Buddha head caught in tree roots. Train or minivan, about 1 h 30.", "L'ancienne capitale en ruines, célèbre pour une tête de Bouddha prise dans les racines d'un arbre. Train ou minivan, environ 1 h 30.") },
+    ],
+    eat: [
+      { id: "bkk-thipsamai", emoji: "🍤", name: "Thip Samai", what: L("The pad thai institution since the 1960s, wrapped in an omelette. Queues, worth it.", "L'institution du pad thaï depuis les années 1960, enveloppé dans une omelette. Files d'attente, ça vaut le coup."), kids: true },
+      { id: "bkk-jayfai", emoji: "🦀", name: "Jay Fai", what: L("The goggled chef with a Michelin star at a street shop: crab omelette. Expensive and booked weeks ahead.", "La cheffe à lunettes de plongée étoilée Michelin dans une échoppe de rue : omelette au crabe. Cher et réservé des semaines à l'avance.") },
+      { id: "bkk-boatnoodles", emoji: "🍜", name: "Boat noodles", what: L("Tiny bowls of dark, rich pork or beef broth, you order five at a time. Victory Monument area is the classic.", "Petits bols de bouillon sombre de porc ou de bœuf, on en commande cinq à la fois. Le quartier Victory Monument est le classique.") },
+      { id: "bkk-mango", emoji: "🥭", name: "Mango sticky rice", what: L("Sweet sticky rice, ripe mango, coconut cream. A dessert, a breakfast, everything.", "Riz gluant sucré, mangue mûre, crème de coco. Un dessert, un petit-déjeuner, tout."), kids: true },
+      { id: "bkk-khaomangai", emoji: "🍗", name: "Khao man gai", what: L("Poached chicken on fragrant rice with a ginger-chilli sauce. Gentle for a child if you skip the sauce.", "Poulet poché sur riz parfumé avec sauce gingembre-piment. Doux pour un enfant si on évite la sauce."), kids: true },
+    ],
+    tips: [
+      L("Temples close by about 15:30–17:00 and Grand Palace ticket sales stop earlier. Do the big sights in the morning, a pool or mall in the afternoon.", "Les temples ferment vers 15 h 30–17 h et la billetterie du Grand Palais ferme plus tôt. Les grands sites le matin, piscine ou centre commercial l'après-midi."),
+      L("BTS and MRT are fast, cool and cheap, but stairs and crowds: a light stroller or a carrier beats a big pram. Sidewalks are broken and busy.", "BTS et MRT sont rapides, frais et pas chers, mais avec escaliers et foule : poussette légère ou porte-bébé plutôt qu'une grosse poussette. Les trottoirs sont défoncés et encombrés."),
+      L("Cross roads where there are lights or other people. Motorbikes ignore the rules.", "Traverse là où il y a des feux ou d'autres gens. Les motos ignorent les règles."),
+      L("Bring a light scarf or long trousers in your bag; you will want them for temples, and the AC in malls is polar.", "Garde un foulard léger ou un pantalon long dans le sac : utile pour les temples, et la clim des centres commerciaux est polaire."),
+    ],
+  },
+  {
+    id: "phuket",
+    emoji: "🏝️",
+    name: "Phuket",
+    thai: "ภูเก็ต",
+    center: "Phuket, Thailand",
+    intro: L(
+      "Thailand's biggest island (about 540 km²) in the Andaman Sea, linked to the mainland by the Sarasin Bridge. Tin mining and rubber made it rich, then Hokkien Chinese traders left an old town of pastel shophouses. Today: west-coast beaches, boats to Phang Nga and Phi Phi, and a lot of tourists.",
+      "La plus grande île de Thaïlande (environ 540 km²), dans la mer d'Andaman, reliée au continent par le pont Sarasin. L'étain et le caoutchouc l'ont enrichie, puis des commerçants chinois hokkien y ont laissé une vieille ville de maisons-boutiques pastel. Aujourd'hui : plages de la côte ouest, bateaux vers Phang Nga et Phi Phi, et beaucoup de touristes.",
+    ),
+    facts: [
+      { label: L("Area", "Superficie"), value: L("About 540 km²", "Environ 540 km²") },
+      { label: L("Heritage", "Héritage"), value: L("Tin, rubber, Hokkien and Sino-Portuguese", "Étain, caoutchouc, hokkien et sino-portugais") },
+      { label: L("Best time", "Meilleure période"), value: L("Nov–Apr (calm seas); May–Oct rough west coast", "Nov.–avr. (mer calme) ; mai–oct. côte ouest agitée") },
+      { label: L("Getting around", "Se déplacer"), value: L("Grab is patchy; taxis are dear; many rent a scooter or a car", "Grab inégal ; taxis chers ; beaucoup louent un scooter ou une voiture") },
+    ],
+    areas: [
+      { name: "Patong", what: L("The big party beach: loud, Bangla Road at night. Not the baby-friendly pick.", "La grande plage festive : bruyante, Bangla Road la nuit. Pas le choix idéal avec un bébé.") },
+      { name: "Kata & Karon", what: L("Wide beaches, calmer, lots of families and restaurants. Kata Noi is the quiet little sister.", "Grandes plages, plus calmes, beaucoup de familles et de restaurants. Kata Noi est la petite sœur tranquille.") },
+      { name: "Nai Harn & Rawai", what: L("The south: sunsets, locals, seafood, Promthep Cape.", "Le sud : couchers de soleil, locaux, fruits de mer, cap Promthep.") },
+      { name: "Kamala, Surin, Bang Tao", what: L("The quieter, more upscale west coast, beach clubs and long sand.", "La côte ouest plus calme et plus chic, beach clubs et longue plage.") },
+      { name: "Phuket Town", what: L("Sino-Portuguese old town, cafés, murals, food. A day or an evening, not a beach.", "Vieille ville sino-portugaise, cafés, fresques, cuisine. Une journée ou une soirée, pas une plage.") },
+      { name: "Mai Khao & Nai Yang", what: L("The north, by the airport: empty beaches, sea turtles lay eggs in winter.", "Le nord, près de l'aéroport : plages désertes, les tortues marines pondent en hiver.") },
+    ],
+    places: [
+      { id: "pkt-bigbuddha", emoji: "🧘", name: "Big Buddha", area: "Chalong", what: L("A 45 m white marble Buddha on a hilltop with a view of the whole island. Dress code applies; it's still a working temple site.", "Un Bouddha de marbre blanc de 45 m au sommet d'une colline, avec vue sur toute l'île. Tenue correcte : c'est un lieu de culte."), tip: L("Go early, the road is steep and hot.", "Y aller tôt, la route est raide et chaude.") },
+      { id: "pkt-chalong", emoji: "🛕", name: "Wat Chalong", area: "Chalong", what: L("The most important temple of Phuket, with a chedi said to hold a relic of Buddha. Locals come to pray, and to light firecrackers.", "Le temple le plus important de Phuket, avec un chédi qui abriterait une relique du Bouddha. Les locaux viennent prier, et allumer des pétards.") },
+      { id: "pkt-oldtown", emoji: "🏘️", name: "Old Phuket Town", area: "Phuket Town", what: L("Thalang, Dibuk and Krabi roads: pastel Sino-Portuguese shophouses, shrines, street art.", "Rues Thalang, Dibuk et Krabi : maisons-boutiques sino-portugaises pastel, sanctuaires, street art."), kids: true },
+      { id: "pkt-sunday", emoji: "🌙", name: "Sunday Walking Street (Lard Yai)", area: "Phuket Town", what: L("Every Sunday from about 16:00, Thalang Road closes for a food and craft market.", "Chaque dimanche à partir de 16 h environ, la rue Thalang est fermée pour un marché de bouffe et d'artisanat."), kids: true },
+      { id: "pkt-promthep", emoji: "🌇", name: "Promthep Cape", area: "Rawai", what: L("The postcard sunset at the southern tip of the island, with a little lighthouse.", "Le coucher de soleil de carte postale à la pointe sud de l'île, avec un petit phare."), kids: true },
+      { id: "pkt-kata", emoji: "🏖️", name: "Kata & Kata Noi beach", area: "Kata", what: L("Gentle slope, warm water in the dry season, shade and cafés on the sand: the easy beach day with a toddler.", "Pente douce, eau chaude en saison sèche, ombre et cafés sur le sable : la journée plage facile avec un tout-petit."), tip: L("Check the flag: red = don't swim (strong currents, mostly in the rainy season).", "Regarde le drapeau : rouge = pas de baignade (forts courants, surtout en saison des pluies)."), kids: true },
+      { id: "pkt-surin", emoji: "🌊", name: "Surin & Kamala beach", area: "West coast", what: L("Prettier and quieter than Patong, good for a sunset with a drink.", "Plus beau et plus calme que Patong, idéal pour un coucher de soleil avec un verre.") },
+      { id: "pkt-phangnga", emoji: "🛶", name: "Phang Nga Bay (James Bond Island)", area: "Boat trip", what: L("Limestone towers rising from green water; kayak into sea caves. Day trip by speedboat or a longtail.", "Tours calcaires qui sortent d'une eau verte ; kayak dans des grottes marines. Excursion d'une journée en speedboat ou longtail."), tip: L("Go with a small operator and early, so you miss the crowds.", "Choisis un petit opérateur, et pars tôt pour éviter la foule.") },
+      { id: "pkt-phiphi", emoji: "🐢", name: "Phi Phi Islands", area: "Boat trip", what: L("Maya Bay and clear water; very touristy. Maya Bay has rules to protect the reef and limited entry.", "Maya Bay et eau cristalline ; très touristique. Maya Bay a des règles pour protéger le récif et un accès limité.") },
+      { id: "pkt-elephant", emoji: "🐘", name: "Ethical elephant sanctuary", area: "Inland", what: L("Look for places where you watch and feed, no riding, no shows. Book in advance, ask how they treat the animals.", "Cherche des lieux où l'on observe et nourrit, sans balade ni spectacle. Réserve à l'avance, demande comment sont traités les animaux."), kids: true },
+      { id: "pkt-aquarium", emoji: "🦈", name: "Phuket Aquarium", area: "Cape Panwa", what: L("Small and calm: a rain-day plan with Charlie.", "Petit et calme : plan jour de pluie avec Charlie."), kids: true },
+      { id: "pkt-nightmarket", emoji: "🦐", name: "Karon / Kata night market", area: "Kata-Karon", what: L("Food stalls, grilled seafood and souvenirs in the evening, a few steps from the hotels.", "Étals de cuisine, fruits de mer grillés et souvenirs le soir, à quelques pas des hôtels."), kids: true },
+    ],
+    eat: [
+      { id: "pkt-mee", emoji: "🍜", name: "Mee Hokkien", what: L("Phuket's noodle dish, thick yellow noodles stir-fried with pork, seafood and greens. Hokkien heritage on a plate.", "Le plat de nouilles de Phuket : épaisses nouilles jaunes sautées avec porc, fruits de mer et légumes. L'héritage hokkien dans l'assiette."), kids: true },
+      { id: "pkt-moohong", emoji: "🐖", name: "Moo hong", what: L("Braised pork belly in soy and pepper, sweet and melting. Done best in Old Town.", "Poitrine de porc braisée au soja et au poivre, sucrée et fondante. Meilleur dans la vieille ville."), kids: true },
+      { id: "pkt-dimsum", emoji: "🥟", name: "Dim sum & kopi", what: L("Breakfast in a Chinese coffee shop in Old Town: dim sum, soft eggs on toast, thick sweet coffee.", "Petit-déjeuner dans un café chinois de la vieille ville : dim sum, œufs mollets sur toast, café épais et sucré."), kids: true },
+      { id: "pkt-seafood", emoji: "🦞", name: "Grilled seafood in Rawai", what: L("Pick fish and prawns by weight at the harbour and have them grilled. Agree the price before they cook it.", "Tu choisis poissons et crevettes au poids au port, et on te les grille. Fixe le prix avant la cuisson.") },
+      { id: "pkt-roti", emoji: "🥞", name: "Roti with massaman", what: L("The Muslim breakfast: flaky roti dipped in a mild curry. Great for kids.", "Le petit-déjeuner musulman : roti feuilleté trempé dans un curry doux. Idéal pour les enfants."), kids: true },
+    ],
+    tips: [
+      L("It is the start of the dry season: seas are calming, but check flags and ask your hotel before swimming on exposed west-coast beaches.", "C'est le début de la saison sèche : la mer se calme, mais regarde les drapeaux et demande à l'hôtel avant de te baigner sur les plages exposées de la côte ouest."),
+      L("The island is big and hilly: Patong to Rawai is about 45 min by car. Pick one base (Kata/Karon for families) and do 2 areas per day.", "L'île est grande et vallonnée : Patong–Rawai prend ~45 min en voiture. Choisis une base (Kata/Karon pour les familles) et fais 2 zones par jour."),
+      L("Taxis and Grab drivers on Phuket can be very expensive: ask the price first, or ask your hotel to book. Scooters are everywhere: accidents are common, don't take Charlie on one.", "Les taxis et chauffeurs Grab de Phuket peuvent être très chers : demande le prix avant, ou fais réserver par l'hôtel. Les scooters sont partout, les accidents fréquents : pas de scooter avec Charlie."),
+      L("Boat days: a hat, rash guard, reef-safe sunscreen and sea-sick pills if you are sensitive.", "Journées en bateau : chapeau, lycra anti-UV, crème solaire respectueuse des récifs et pilules anti-mal de mer si besoin."),
+      L("Tsunami 2004 hit the west coast; you will see evacuation signs. Don't be alarmed: they are standard.", "Le tsunami de 2004 a frappé la côte ouest ; tu verras des panneaux d'évacuation. Pas d'inquiétude : c'est normal."),
+    ],
+  },
+];
+
+export const QUESTS: Quest[] = [
+  { id: "q-hello", emoji: "👋", title: L("Say 'sawatdee khrap/kha' to a stranger", "Dire « sawatdee khrap/kha » à un inconnu"), hint: L("Guillaume: khrap. Jenny: kha.", "Guillaume : khrap. Jenny : kha.") },
+  { id: "q-wai", emoji: "🙏", title: L("Answer a wai", "Répondre à un wai") },
+  { id: "q-count", emoji: "🔢", title: L("Count to 10 in Thai to a taxi driver or a vendor", "Compter jusqu'à 10 en thaï devant un chauffeur ou un vendeur") },
+  { id: "q-padthai", emoji: "🍜", title: L("Eat pad thai from a street cart", "Manger un pad thaï dans une cantine de rue") },
+  { id: "q-mango", emoji: "🥭", title: L("Mango sticky rice", "Riz gluant à la mangue") },
+  { id: "q-notspicy", emoji: "🌶️", title: L("Order something with 'mai phet'", "Commander un plat avec « mai phet »") },
+  { id: "q-coconut", emoji: "🥥", title: L("Drink a fresh coconut", "Boire une noix de coco fraîche") },
+  { id: "q-seven", emoji: "🥪", title: L("Eat a 7-Eleven toastie", "Manger un toast de 7-Eleven") },
+  { id: "q-spirit", emoji: "🏠", title: L("Spot a spirit house and the offering on it", "Repérer une maison des esprits et son offrande") },
+  { id: "q-wat", emoji: "🛕", title: L("Visit a wat: shoes off, shoulders and knees covered", "Visiter un wat : chaussures retirées, épaules et genoux couverts") },
+  { id: "q-bargain", emoji: "🛍️", title: L("Bargain with a smile: 'lot dai mai?'", "Marchander en souriant : « lot dai mai ? »") },
+  { id: "q-massage", emoji: "💆", title: L("Get a Thai massage (parents, one after the other)", "Faire un massage thaï (les parents, chacun son tour)") },
+  { id: "q-tuktuk", emoji: "🛺", title: L("Ride a tuk-tuk (agree the price first)", "Monter dans un tuk-tuk (prix fixé avant)"), where: "bangkok" },
+  { id: "q-boat", emoji: "⛴️", title: L("Take the Chao Phraya boat", "Prendre le bateau du Chao Phraya"), where: "bangkok" },
+  { id: "q-lizard", emoji: "🦎", title: L("See a monitor lizard in Lumphini Park", "Voir un varan au parc Lumphini"), where: "bangkok" },
+  { id: "q-bts", emoji: "🚇", title: L("Ride the BTS Skytrain", "Prendre le BTS Skytrain"), where: "bangkok" },
+  { id: "q-sunset", emoji: "🌇", title: L("Watch a sunset on the Andaman Sea", "Voir un coucher de soleil sur la mer d'Andaman"), where: "phuket" },
+  { id: "q-hokkien", emoji: "🍜", title: L("Eat mee Hokkien or moo hong", "Manger du mee Hokkien ou du moo hong"), where: "phuket" },
+  { id: "q-oldtown", emoji: "🎨", title: L("Find a mural in Old Phuket Town", "Trouver une fresque dans la vieille ville de Phuket"), where: "phuket" },
+  { id: "q-swim", emoji: "🏊", title: L("Swim in the Andaman Sea", "Se baigner dans la mer d'Andaman"), where: "phuket" },
+  { id: "q-krathong", emoji: "🪷", title: L("Float a krathong for Loy Krathong (around 24 Nov)", "Faire flotter un krathong pour Loy Krathong (vers le 24 nov.)"), hint: L("Choose a biodegradable one made of banana leaf, not foam.", "Choisis-en un biodégradable en feuille de bananier, pas en polystyrène.") },
+];
+
+export const QUESTIONS: Question[] = [
+  { id: "z-colony", q: L("What is special about Thailand in South-East Asia?", "Qu'est-ce qui distingue la Thaïlande en Asie du Sud-Est ?"), options: [L("It has no coastline", "Elle n'a pas de côte"), L("It was never colonised by a European power", "Elle n'a jamais été colonisée par une puissance européenne"), L("It has no king", "Elle n'a pas de roi"), L("It is an island", "C'est une île")], answer: 1, why: L("Siam kept its independence by balancing the French and the British.", "Le Siam a gardé son indépendance en jouant sur l'équilibre entre Français et Britanniques.") },
+  { id: "z-siam", q: L("When did Siam become Thailand?", "Quand le Siam est-il devenu la Thaïlande ?"), options: [L("1782", "1782"), L("1905", "1905"), L("1939", "1939"), L("1999", "1999")], answer: 2, why: L("Under Phibun, in 1939. 'Thai' also means 'free'.", "Sous Phibun, en 1939. « Thaï » signifie aussi « libre ».") },
+  { id: "z-capital", q: L("Which city was Thailand's capital before Bangkok, destroyed by Burma in 1767?", "Quelle ville était la capitale avant Bangkok, détruite par la Birmanie en 1767 ?"), options: [L("Ayutthaya", "Ayutthaya"), L("Chiang Mai", "Chiang Mai"), L("Phuket", "Phuket"), L("Pattaya", "Pattaya")], answer: 0, why: L("Ayutthaya's ruins are a day trip from Bangkok.", "Les ruines d'Ayutthaya sont une excursion d'une journée depuis Bangkok.") },
+  { id: "z-dynasty", q: L("What is the name of the current royal dynasty, founded in 1782?", "Comment s'appelle la dynastie royale actuelle, fondée en 1782 ?"), options: [L("Ming", "Ming"), L("Chakri", "Chakri"), L("Khmer", "Khmère"), L("Mughal", "Moghole")], answer: 1, why: L("Rama I founded Bangkok and the Chakri dynasty; we're at Rama X.", "Rama Ier a fondé Bangkok et la dynastie Chakri ; on en est à Rama X.") },
+  { id: "z-sea", q: L("Phuket is on which sea?", "Phuket est sur quelle mer ?"), options: [L("Gulf of Thailand", "Golfe de Thaïlande"), L("South China Sea", "Mer de Chine méridionale"), L("Andaman Sea", "Mer d'Andaman"), L("Java Sea", "Mer de Java")], answer: 2, why: L("It's on the west side of the peninsula, which is why seasons differ from Koh Samui.", "Elle est du côté ouest de la péninsule, d'où des saisons différentes de Koh Samui.") },
+  { id: "z-religion", q: L("What is the main religion in Thailand?", "Quelle est la religion principale en Thaïlande ?"), options: [L("Theravada Buddhism", "Bouddhisme theravada"), L("Hinduism", "Hindouisme"), L("Islam", "Islam"), L("Shinto", "Shinto")], answer: 0, why: L("About 93% of Thais.", "Environ 93 % des Thaïs.") },
+  { id: "z-feet", q: L("What do you never point at a person or Buddha image?", "Que ne faut-il jamais pointer vers une personne ou un Bouddha ?"), options: [L("Your finger", "Ton doigt"), L("Your feet", "Tes pieds"), L("Your phone", "Ton téléphone"), L("Your hat", "Ton chapeau")], answer: 1, why: L("Feet are the lowest, dirtiest part of the body.", "Les pieds sont la partie la plus basse et la plus impure du corps.") },
+  { id: "z-spirit", q: L("What is the little shrine at the edge of a house or hotel?", "Comment s'appelle le petit autel à l'entrée d'une maison ou d'un hôtel ?"), options: [L("A spirit house", "Une maison des esprits"), L("A bus stop", "Un abribus"), L("A mailbox", "Une boîte aux lettres"), L("A dog kennel", "Une niche")], answer: 0, why: L("It houses the guardian spirit of the land. People leave flowers, water, even soda.", "Elle abrite l'esprit gardien du lieu. On y laisse fleurs, eau, parfois du soda.") },
+  { id: "z-khrap", q: L("Which polite word does a man say at the end of a sentence?", "Quel mot de politesse un homme dit-il à la fin d'une phrase ?"), options: [L("Kha", "Kha"), L("Khrap", "Khrap"), L("Mai", "Mai"), L("Sip", "Sip")], answer: 1, why: L("Khrap for men, kha for women: Guillaume says khrap, Jenny says kha.", "Khrap pour les hommes, kha pour les femmes : Guillaume dit khrap, Jenny dit kha.") },
+  { id: "z-aroi", q: L("What does 'a-roy' mean?", "Que veut dire « a-roy » ?"), options: [L("Delicious", "Délicieux"), L("Too expensive", "Trop cher"), L("Where?", "Où ?"), L("Stop", "Stop")], answer: 0, why: L("Say it when you eat, it makes cooks smile.", "Dis-le en mangeant, ça fait sourire les cuisiniers.") },
+  { id: "z-555", q: L("What does 555 mean in a Thai text?", "Que veut dire 555 dans un SMS thaï ?"), options: [L("Five minutes", "Cinq minutes"), L("A phone number", "Un numéro de téléphone"), L("Laughing", "Rire"), L("Emergency", "Urgence")], answer: 2, why: L("'5' is 'ha' so 555 = hahaha.", "« 5 » se dit « ha », donc 555 = hahaha.") },
+  { id: "z-mai", q: L("Which sentence asks for food that is not spicy?", "Quelle phrase demande un plat pas pimenté ?"), options: [L("Mai phet", "Mai phet"), L("Phet mak", "Phet mak"), L("Nam plao", "Nam plao"), L("Tao rai", "Tao rai")], answer: 0, why: L("'Phet' = spicy, 'mai' = not. 'Tao rai' = how much; 'nam plao' = plain water.", "« Phet » = pimenté, « mai » = non. « Tao rai » = combien ; « nam plao » = eau plate.") },
+  { id: "z-bkk", q: L("What does 'Krung Thep', the Thai name of Bangkok, mean?", "Que veut dire « Krung Thep », le nom thaï de Bangkok ?"), options: [L("City of angels", "Cité des anges"), L("Big river", "Grand fleuve"), L("Golden gate", "Porte dorée"), L("Elephant town", "Ville des éléphants")], answer: 0, why: L("The ceremonial name is the longest in the world.", "Son nom cérémoniel est le plus long du monde.") },
+  { id: "z-wat", q: L("Which Bangkok temple holds a 46 m reclining Buddha?", "Quel temple de Bangkok abrite un Bouddha couché de 46 m ?"), options: [L("Wat Arun", "Wat Arun"), L("Wat Pho", "Wat Pho"), L("Wat Chalong", "Wat Chalong"), L("Wat Phra Kaew", "Wat Phra Kaew")], answer: 1, why: L("Wat Pho, also the birthplace of Thai massage. Phra Kaew has the Emerald Buddha.", "Wat Pho, aussi berceau du massage thaï. Phra Kaew abrite le Bouddha d'Émeraude.") },
+  { id: "z-monk", q: L("A woman wants to give something to a monk. What does she do?", "Une femme veut donner quelque chose à un moine. Que fait-elle ?"), options: [L("Hand it directly", "Elle le lui tend directement"), L("Put it on a cloth or let a man pass it", "Elle le pose sur un tissu ou le fait passer par un homme"), L("Throw it", "Elle le lance"), L("Not allowed at all", "C'est totalement interdit")], answer: 1, why: L("Women don't touch monks, even by accident.", "Une femme ne touche pas un moine, même par accident.") },
+  { id: "z-island", q: L("Phuket is...", "Phuket est..."), options: [L("The largest island of Thailand", "La plus grande île de Thaïlande"), L("A small rock", "Un petit rocher"), L("On the Gulf of Thailand", "Dans le golfe de Thaïlande"), L("In Laos", "Au Laos")], answer: 0, why: L("About 540 km², linked to the mainland by the Sarasin Bridge.", "Environ 540 km², reliée au continent par le pont Sarasin.") },
+  { id: "z-mee", q: L("Which dish is the Phuket classic with thick yellow noodles?", "Quel plat est le classique de Phuket avec de grosses nouilles jaunes ?"), options: [L("Mee Hokkien", "Mee Hokkien"), L("Pad thai", "Pad thaï"), L("Tom yum", "Tom yum"), L("Som tam", "Som tam")], answer: 0, why: L("From the Hokkien Chinese community that settled in Phuket Town.", "Venu de la communauté chinoise hokkien installée à Phuket Town.") },
+  { id: "z-loy", q: L("What do people float for Loy Krathong?", "Que fait-on flotter pour Loy Krathong ?"), options: [L("A little lotus boat with a candle", "Un petit bateau en lotus avec une bougie"), L("A paper plane", "Un avion en papier"), L("A rubber duck", "Un canard en plastique"), L("A flag", "Un drapeau")], answer: 0, why: L("It thanks the water goddess and lets go of bad luck. Full moon of the 12th lunar month.", "On remercie la déesse de l'eau et on laisse partir la malchance. Pleine lune du 12e mois lunaire.") },
+];
+
+export const GUIDE_TOTALS = {
+  cards: CARDS.length,
+  words: WORDS.length,
+  places: CITIES.reduce((n, c) => n + c.places.length, 0),
+  quests: QUESTS.length,
+  questions: QUESTIONS.length,
+};
