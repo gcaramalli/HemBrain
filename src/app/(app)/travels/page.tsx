@@ -269,6 +269,7 @@ function AddCountries({ open, onClose, onAdded }: { open: boolean; onClose: () =
   const [text, setText] = useState("");
   const [people, setPeople] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [when, setWhen] = useState(""); // optional month: also puts the trip on the timeline
   const chosen = people.length ? people : me ? [me.id] : [];
   const { codes, unknown } = parseCountries(text);
 
@@ -278,8 +279,12 @@ function AddCountries({ open, onClose, onAdded }: { open: boolean; onClose: () =
     setBusy(true);
     const rows = chosen.flatMap((member_id) => codes.map((country) => ({ member_id, country })));
     const { error } = await supabase.from("visited_countries").upsert(rows, { onConflict: "member_id,country", ignoreDuplicates: true });
+    if (!error && when) {
+      await supabase.from("trips").insert(codes.map((country) => ({ country, start_month: `${when}-01`, member_ids: chosen })));
+    }
     setBusy(false);
     if (error) return toast(error.message);
+    setWhen("");
     toast(codes.length === 1 ? t("1 country added") : t("{n} countries added", { n: codes.length }));
     setText("");
     setPeople([]);
@@ -315,6 +320,10 @@ function AddCountries({ open, onClose, onAdded }: { open: boolean; onClose: () =
           value={text}
           onChange={(e) => setText(e.target.value)}
         />
+        <label>
+          <span className="label">{t("When? (optional, adds it to the timeline)")}</span>
+          <input type="month" className="input" value={when} onChange={(e) => setWhen(e.target.value)} />
+        </label>
         {codes.length > 0 && (
           <p className="text-sm">{codes.map((c) => `${flag(c)} ${countryName(c, locale)}`).join(" · ")}</p>
         )}

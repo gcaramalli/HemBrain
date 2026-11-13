@@ -19,6 +19,7 @@ export default function TimelinePage() {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [person, setPerson] = useState<string | null>(me?.id ?? null);
   const [editing, setEditing] = useState<Draft | null>(null);
+  const [ticked, setTicked] = useState<{ country: string; member_id: string }[]>([]);
   const [journal, setJournal] = useState<Pick<JournalEntry, "country" | "kind" | "entry_date">[]>([]);
 
   const load = useCallback(async () => {
@@ -28,6 +29,10 @@ export default function TimelinePage() {
 
   useEffect(() => {
     load();
+    supabase
+      .from("visited_countries")
+      .select("country, member_id")
+      .then(({ data }) => setTicked(data ?? []));
     supabase
       .from("journal_entries")
       .select("country, kind, entry_date")
@@ -49,6 +54,10 @@ export default function TimelinePage() {
     years.set(y, [...(years.get(y) ?? []), x]);
   }
   const countries = new Set(mine.map((x) => x.country)).size;
+  // Ticked on the map (by the people shown) but in no trip yet: one tap to date it.
+  const undated = [...new Set(ticked.filter((v) => !person || v.member_id === person).map((v) => v.country))]
+    .filter((c) => !trips.some((x) => x.country === c && (!person || x.member_ids.includes(person))))
+    .sort((a, b) => countryName(a, locale).localeCompare(countryName(b, locale), locale));
 
   const blank = (): Draft => ({ place: "", start: "", end: "", lived: false, note: "", member_ids: person ? [person] : me ? [me.id] : [] });
   const edit = (x: Trip): Draft => ({
@@ -128,6 +137,23 @@ export default function TimelinePage() {
           </ul>
         </section>
       ))}
+      {undated.length > 0 && (
+        <section>
+          <h2 className="h2 mb-1">{t("On the map, not on the timeline yet")}</h2>
+          <p className="mb-2 text-xs text-muted">{t("Tap a country to say when you went.")}</p>
+          <div className="flex flex-wrap gap-2">
+            {undated.map((c) => (
+              <button
+                key={c}
+                className="chip-toggle"
+                onClick={() => setEditing({ ...blank(), place: countryName(c, locale), member_ids: [...new Set(ticked.filter((v) => v.country === c && (!person || v.member_id === person)).map((v) => v.member_id))] })}
+              >
+                {flag(c)} {countryName(c, locale)}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
       {mine.length === 0 && <p className="card text-sm text-muted">{t("Add your trips: where, when, with whom. Each one ticks the country on the map.")}</p>}
 
       <TripSheet draft={editing} setDraft={setEditing} onSaved={load} onDelete={(id) => remove(trips.find((x) => x.id === id)!)} />

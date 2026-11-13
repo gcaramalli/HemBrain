@@ -1201,4 +1201,7 @@ export const sv: Record<string, string> = {
   "{n} days written": "{n} dagar skrivna",
   "1 stay": "1 vistelse",
   "{n} stays": "{n} vistelser",
+  "On the map, not on the timeline yet": "På kartan, inte på tidslinjen än",
+  "Tap a country to say when you went.": "Tryck på ett land för att säga när ni var där.",
+  "When? (optional, adds it to the timeline)": "När? (valfritt, läggs till på tidslinjen)",
 };

@@ -1201,4 +1201,7 @@ export const fr: Record<string, string> = {
   "{n} days written": "{n} jours écrits",
   "1 stay": "1 séjour",
   "{n} stays": "{n} séjours",
+  "On the map, not on the timeline yet": "Sur la carte, pas encore dans la timeline",
+  "Tap a country to say when you went.": "Touche un pays pour dire quand vous y êtes allés.",
+  "When? (optional, adds it to the timeline)": "Quand ? (facultatif, l'ajoute à la timeline)",
 };
