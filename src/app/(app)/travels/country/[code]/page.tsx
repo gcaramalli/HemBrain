@@ -1,55 +1,87 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { useFamily } from "@/components/family-context";
 import { TravelsHeader } from "@/components/page-header";
 import { TravelJournal } from "@/components/travel-journal";
-import { BADGES, MAX_XP, XP, levelOf, useGuideProgress, xpOf, type Progress } from "@/lib/guides/progress";
-import { CARDS, CITIES, QUESTIONS, QUESTS, WORDS, WORD_GROUPS, type City, type L, type Place } from "@/lib/guides/thailand";
+import { countryName, flag, whoWent } from "@/lib/countries";
+import { badgesFor, levelOf, maxXp, useGuideProgress, XP, xpOf, type Progress } from "@/lib/guides/progress";
+import { guideFor, type City, type Guide, type L, type Place } from "@/lib/guides";
 
-type Tab = "journal" | "play" | "learn" | "words" | "bangkok" | "phuket" | "quiz";
+type Tab = "journal" | "guide" | "play";
 
-// A mini Lonely Planet for Thailand: cards to read, words to learn, Bangkok and Phuket in depth,
-// and a game on top (XP, levels, badges, quests, quiz). Progress is per person, in this browser.
-export default function GuidePage() {
-  const { me, locale, t } = useFamily();
-  const { p, ready, toggle, answer, reset } = useGuideProgress(me?.id);
+// One country: the family's journal and timeline for it and, where there is one, a mini Lonely Planet
+// with a game on top (XP, levels, quests, quiz). Progress is per person, in this browser.
+export default function CountryPage() {
+  const { code: raw } = useParams<{ code: string }>();
+  const code = String(raw ?? "").toUpperCase();
+  const { supabase, me, members, locale, t } = useFamily();
+  const g = guideFor(code);
+  const { p, ready, toggle, answer, reset } = useGuideProgress(code, me?.id);
   const [tab, setTab] = useState<Tab>("journal");
+  const [who, setWho] = useState<string[]>([]);
   const tx = (l: L) => (locale === "fr" ? l.fr : l.en);
-  const tabs: { id: Tab; label: string }[] = [
-    { id: "journal", label: t("Journal") },
-    { id: "play", label: t("Play") },
-    { id: "learn", label: t("Cards") },
-    { id: "words", label: t("Words") },
-    { id: "bangkok", label: "Bangkok" },
-    { id: "phuket", label: "Phuket" },
-    { id: "quiz", label: t("Quiz") },
-  ];
+  const tabs: { id: Tab; label: string }[] = g
+    ? [
+        { id: "journal", label: t("Journal") },
+        { id: "guide", label: t("Guide") },
+        { id: "play", label: t("Play") },
+      ]
+    : [];
+
+  // Who has been (map ticks), shown as dots next to the name.
+  useEffect(() => {
+    supabase
+      .from("visited_countries")
+      .select("country, member_id")
+      .eq("country", code)
+      .then(({ data }) => setWho([...(whoWent(data ?? []).get(code) ?? [])]));
+  }, [supabase, code]);
 
   return (
     <div className="flex flex-col gap-4">
       <TravelsHeader back="/travels" backLabel={t("Travels")} />
-      <div className="flex gap-1 overflow-x-auto rounded-full bg-accent-soft p-1 text-sm">
-        {tabs.map((x) => (
-          <button key={x.id} onClick={() => setTab(x.id)} aria-pressed={tab === x.id} className={`min-h-9 shrink-0 grow rounded-full px-3 ${tab === x.id ? "bg-[var(--pill)] font-semibold shadow-sm" : "text-muted"}`}>
-            {x.label}
-          </button>
-        ))}
-      </div>
-      {tab === "journal" ? (
-        <TravelJournal />
+      <section className="card flex items-center gap-3 p-4">
+        <span className="text-4xl" aria-hidden>{flag(code)}</span>
+        <div className="min-w-0 grow">
+          <h1 className="text-xl font-bold leading-tight">{countryName(code, locale)}</h1>
+          <div className="mt-1 flex flex-wrap gap-2">
+            {members.filter((m) => who.includes(m.id)).map((m) => (
+              <span key={m.id} className="inline-flex items-center gap-1.5 text-xs font-medium">
+                <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: m.color }} />
+                {m.name}
+              </span>
+            ))}
+          </div>
+        </div>
+        <Link href="/travels/timeline" className="chip-toggle shrink-0">{t("Timeline")}</Link>
+      </section>
+
+      {tabs.length > 0 && (
+        <div className="grid grid-cols-3 rounded-full bg-accent-soft p-1 text-sm">
+          {tabs.map((x) => (
+            <button key={x.id} onClick={() => setTab(x.id)} aria-pressed={tab === x.id} className={`min-h-9 rounded-full px-3 ${tab === x.id ? "bg-[var(--pill)] font-semibold shadow-sm" : "text-muted"}`}>
+              {x.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {tab === "journal" || !g ? (
+        <TravelJournal country={code} />
       ) : !ready ? (
         <div className="card h-40" />
-      ) : tab === "play" ? (
-        <Play p={p} tx={tx} toggle={toggle} reset={reset} />
-      ) : tab === "learn" ? (
-        <Cards p={p} tx={tx} toggle={toggle} />
-      ) : tab === "words" ? (
-        <Words p={p} tx={tx} toggle={toggle} />
-      ) : tab === "quiz" ? (
-        <Quiz p={p} tx={tx} answer={answer} />
+      ) : tab === "guide" ? (
+        <GuideTab g={g} p={p} tx={tx} toggle={toggle} />
       ) : (
-        <CityView city={CITIES.find((c) => c.id === tab)!} p={p} tx={tx} toggle={toggle} />
+        <>
+          <Play g={g} p={p} tx={tx} toggle={toggle} reset={reset} />
+          <Fold emoji="🧠" title={t("Quiz")} sub={t("{a} of {b} right", { a: Object.values(p.quiz).filter(Boolean).length, b: g.questions.length })}>
+            <Quiz g={g} p={p} tx={tx} answer={answer} />
+          </Fold>
+        </>
       )}
     </div>
   );
@@ -58,13 +90,51 @@ export default function GuidePage() {
 type Tx = (l: L) => string;
 type Toggle = (field: "cards" | "words" | "places" | "quests", id: string) => void;
 
-function Play({ p, tx, toggle, reset }: { p: Progress; tx: Tx; toggle: Toggle; reset: () => void }) {
+// One page, folds instead of more tabs: the country in cards, the words, then each city.
+function GuideTab({ g, p, tx, toggle }: { g: Guide; p: Progress; tx: Tx; toggle: Toggle }) {
+  const { t } = useFamily();
+  return (
+    <>
+      <Fold emoji="📜" title={t("The country in cards")} sub={t("{a} of {b} read", { a: p.cards.length, b: g.cards.length })}>
+        <Cards g={g} p={p} tx={tx} toggle={toggle} />
+      </Fold>
+      <Fold emoji="🗣️" title={t("Words")} sub={t("{a} of {b} words learned", { a: p.words.length, b: g.words.length })}>
+        <Words g={g} p={p} tx={tx} toggle={toggle} />
+      </Fold>
+      {g.cities.map((c) => (
+        <Fold key={c.id} emoji={c.emoji} title={c.name} sub={t("{a} of {b} places done", { a: c.places.concat(c.eat).filter((x) => p.places.includes(x.id)).length, b: c.places.length + c.eat.length })}>
+          <CityView city={c} p={p} tx={tx} toggle={toggle} />
+        </Fold>
+      ))}
+    </>
+  );
+}
+
+function Fold({ emoji, title, sub, children }: { emoji: string; title: string; sub?: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <section className="flex flex-col gap-3">
+      <button className="card flex min-h-16 items-center gap-3 p-4 text-left" onClick={() => setOpen(!open)} aria-expanded={open}>
+        <span className="text-3xl" aria-hidden>{emoji}</span>
+        <span className="min-w-0 grow">
+          <span className="block text-lg font-bold leading-tight">{title}</span>
+          {sub && <span className="block text-sm text-muted">{sub}</span>}
+        </span>
+        <span aria-hidden className="text-muted">{open ? "▴" : "▾"}</span>
+      </button>
+      {open && children}
+    </section>
+  );
+}
+
+
+function Play({ g, p, tx, toggle, reset }: { g: Guide; p: Progress; tx: Tx; toggle: Toggle; reset: () => void }) {
   const { t } = useFamily();
   const xp = xpOf(p);
-  const lv = levelOf(xp);
+  const lv = levelOf(xp, g.levels);
   const pct = lv.to === null ? 100 : Math.round(((xp - lv.from) / (lv.to - lv.from)) * 100);
-  const [scope, setScope] = useState<"all" | "bangkok" | "phuket">("all");
-  const quests = QUESTS.filter((q) => scope === "all" || !q.where || q.where === scope);
+  const [scope, setScope] = useState<string>("all");
+  const quests = g.quests.filter((q) => scope === "all" || !q.where || q.where === scope);
   const done = quests.filter((q) => p.quests.includes(q.id)).length;
 
   return (
@@ -88,14 +158,14 @@ function Play({ p, tx, toggle, reset }: { p: Progress; tx: Tx; toggle: Toggle; r
           {lv.next ? t("{n} XP to become {name}", { n: lv.to! - xp, name: `${lv.next.emoji} ${tx(lv.next.name)}` }) : t("Top level. Khop khun khrap/kha!")}
         </p>
         <p className="text-xs text-muted">
-          {t("Read a card +{a}, learn a word +{b}, visit a place +{c}, do a quest +{d}, right answer +{e}.", { a: XP.card, b: XP.word, c: XP.place, d: XP.quest, e: XP.quiz })} {t("Max {n} XP.", { n: MAX_XP })}
+          {t("Read a card +{a}, learn a word +{b}, visit a place +{c}, do a quest +{d}, right answer +{e}.", { a: XP.card, b: XP.word, c: XP.place, d: XP.quest, e: XP.quiz })} {t("Max {n} XP.", { n: maxXp(g) })}
         </p>
       </section>
 
       <section className="card flex flex-col gap-2 p-4">
         <h2 className="font-bold">{t("Badges")}</h2>
         <ul className="grid grid-cols-2 gap-2">
-          {BADGES.map((b) => {
+          {badgesFor(g).map((b) => {
             const on = b.test(p);
             return (
               <li key={b.id} className={`flex items-center gap-2 rounded-2xl px-3 py-2 text-sm ${on ? "bg-accent-soft font-semibold" : "text-muted opacity-60"}`}>
@@ -113,9 +183,9 @@ function Play({ p, tx, toggle, reset }: { p: Progress; tx: Tx; toggle: Toggle; r
           <span className="text-sm text-muted">{done} / {quests.length}</span>
         </div>
         <div className="flex gap-2">
-          {(["all", "bangkok", "phuket"] as const).map((s) => (
+          {["all", ...g.cities.map((c) => c.id)].map((s) => (
             <button key={s} className={`chip-toggle ${scope === s ? "chip-on" : ""}`} onClick={() => setScope(s)}>
-              {s === "all" ? t("All") : s === "bangkok" ? "Bangkok" : "Phuket"}
+              {s === "all" ? t("All") : g.cities.find((c) => c.id === s)!.name}
             </button>
           ))}
         </div>
@@ -152,12 +222,12 @@ function CheckRow({ on, onClick, emoji, title, sub, xp }: { on: boolean; onClick
   );
 }
 
-function Cards({ p, tx, toggle }: { p: Progress; tx: Tx; toggle: Toggle }) {
+function Cards({ g, p, tx, toggle }: { g: Guide; p: Progress; tx: Tx; toggle: Toggle }) {
   const { t } = useFamily();
-  const [open, setOpen] = useState<string | null>(CARDS[0].id);
+  const [open, setOpen] = useState<string | null>(null);
   return (
     <>
-      {CARDS.map((c) => {
+      {g.cards.map((c) => {
         const isOpen = open === c.id;
         const read = p.cards.includes(c.id);
         return (
@@ -187,7 +257,7 @@ function Cards({ p, tx, toggle }: { p: Progress; tx: Tx; toggle: Toggle }) {
   );
 }
 
-function Words({ p, tx, toggle }: { p: Progress; tx: Tx; toggle: Toggle }) {
+function Words({ g, p, tx, toggle }: { g: Guide; p: Progress; tx: Tx; toggle: Toggle }) {
   const { t } = useFamily();
   const [quiz, setQuiz] = useState(false); // flashcards: hide the meaning until tapped
   const [shown, setShown] = useState<string[]>([]);
@@ -196,18 +266,18 @@ function Words({ p, tx, toggle }: { p: Progress; tx: Tx; toggle: Toggle }) {
     <>
       <section className="card flex flex-col gap-2 p-4">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="font-bold">{t("{a} of {b} words learned", { a: known, b: WORDS.length })}</h2>
+          <h2 className="font-bold">{t("{a} of {b} words learned", { a: known, b: g.words.length })}</h2>
           <button className={`chip-toggle ${quiz ? "chip-on" : ""}`} aria-pressed={quiz} onClick={() => { setQuiz(!quiz); setShown([]); }}>
             {t("Flashcards")}
           </button>
         </div>
         <p className="text-xs text-muted">{t("Thai has 5 tones, so the spelling in Latin letters is only a guide: say it, smile, and people will help you.")}</p>
       </section>
-      {WORD_GROUPS.map((g) => (
-        <section key={g.id} className="card flex flex-col gap-1 p-4">
-          <h3 className="text-sm font-bold uppercase tracking-wide text-muted">{tx(g.label)}</h3>
+      {g.wordGroups.map((grp) => (
+        <section key={grp.id} className="card flex flex-col gap-1 p-4">
+          <h3 className="text-sm font-bold uppercase tracking-wide text-muted">{tx(grp.label)}</h3>
           <ul className="flex flex-col divide-y divide-border">
-            {WORDS.filter((w) => w.group === g.id).map((w) => {
+            {g.words.filter((w) => w.group === grp.id).map((w) => {
               const on = p.words.includes(w.id);
               const reveal = !quiz || shown.includes(w.id);
               return (
@@ -323,12 +393,12 @@ function CityView({ city, p, tx, toggle }: { city: City; p: Progress; tx: Tx; to
   );
 }
 
-function Quiz({ p, tx, answer }: { p: Progress; tx: Tx; answer: (id: string, right: boolean) => void }) {
+function Quiz({ g, p, tx, answer }: { g: Guide; p: Progress; tx: Tx; answer: (id: string, right: boolean) => void }) {
   const { t } = useFamily();
-  const total = QUESTIONS.length;
+  const total = g.questions.length;
   const answeredIds = Object.keys(p.quiz);
   const nextIndex = useMemo(() => {
-    const i = QUESTIONS.findIndex((q) => !(q.id in p.quiz));
+    const i = g.questions.findIndex((q) => !(q.id in p.quiz));
     return i === -1 ? total : i;
     // The question stays on screen after being answered until "Next": track it locally.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -336,7 +406,7 @@ function Quiz({ p, tx, answer }: { p: Progress; tx: Tx; answer: (id: string, rig
   const [idx, setIdx] = useState(nextIndex);
   const [picked, setPicked] = useState<number | null>(null);
   const right = Object.values(p.quiz).filter(Boolean).length;
-  const q = QUESTIONS[idx];
+  const q = g.questions[idx];
 
   if (!q)
     return (

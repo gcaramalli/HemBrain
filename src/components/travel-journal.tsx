@@ -5,7 +5,8 @@ import { useFamily } from "./family-context";
 import { Sheet } from "./sheet";
 import { useToast } from "./toast";
 import { fmtDate } from "@/lib/dates";
-import type { JournalEntry } from "@/lib/types";
+import { planTrip } from "@/lib/trips";
+import type { JournalEntry, Trip } from "@/lib/types";
 
 type Draft = { id?: string; kind: "stay" | "day"; date: string; to: string; title: string; place: string; city: string; body: string };
 
@@ -16,7 +17,7 @@ const days = (a: string, b: string) => Math.round((day(b).getTime() - day(a).get
 // The trip notebook: where we sleep, and a few lines each day. Written here or by Claude through
 // the connector (add_journal). Shared by the family.
 export function TravelJournal({ country = "TH" }: { country?: string }) {
-  const { supabase, t } = useFamily();
+  const { supabase, members, t } = useFamily();
   const toast = useToast();
   const [rows, setRows] = useState<JournalEntry[] | null>(null);
   const [edit, setEdit] = useState<Draft | null>(null);
@@ -51,8 +52,17 @@ export function TravelJournal({ country = "TH" }: { country?: string }) {
     };
     const { error } = d.id ? await supabase.from("journal_entries").update(row).eq("id", d.id) : await supabase.from("journal_entries").insert(row);
     if (error) return toast(error.message);
+    await putOnTimeline(d.date);
     setEdit(null);
     load();
+  }
+
+  // The first note in a month puts the trip on the timeline (and ticks the country on the map).
+  async function putOnTimeline(date: string) {
+    const { data } = await supabase.from("trips").select("id, country, start_month, end_month, lived").eq("country", country);
+    const plan = planTrip((data ?? []) as Trip[], country, date);
+    if (plan.action === "extend") await supabase.from("trips").update({ end_month: plan.end_month }).eq("id", plan.id);
+    if (plan.action === "insert") await supabase.from("trips").insert({ country, start_month: plan.start_month, member_ids: members.map((m) => m.id) });
   }
 
   async function remove(d: Draft) {

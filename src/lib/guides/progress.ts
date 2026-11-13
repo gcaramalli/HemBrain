@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CITIES, QUESTS, QUESTIONS, WORDS, CARDS, type L } from "./thailand";
+import type { Guide, L } from "./index";
 
 // A player's progress in the Thailand guide. Kept in this browser (localStorage, one
 // entry per account), so it is a per-person game: each of us learns at our own pace.
@@ -14,7 +14,7 @@ export type Progress = {
 };
 
 const EMPTY: Progress = { cards: [], words: [], places: [], quests: [], quiz: {} };
-const key = (who: string) => `guide-th:${who}`;
+const key = (code: string, who: string) => `guide-${code.toLowerCase()}:${who}`;
 
 export const XP = { card: 5, word: 2, place: 15, quest: 20, quiz: 10 } as const;
 
@@ -28,58 +28,56 @@ export function xpOf(p: Progress) {
   );
 }
 
-export const MAX_XP =
-  CARDS.length * XP.card + WORDS.length * XP.word + CITIES.reduce((n, c) => n + c.places.length + c.eat.length, 0) * XP.place + QUESTS.length * XP.quest + QUESTIONS.length * XP.quiz;
+export const maxXp = (g: Guide) =>
+  g.cards.length * XP.card + g.words.length * XP.word + g.cities.reduce((n, c) => n + c.places.length + c.eat.length, 0) * XP.place + g.quests.length * XP.quest + g.questions.length * XP.quiz;
 
-export const LEVELS: { at: number; emoji: string; name: L }[] = [
-  { at: 0, emoji: "🎒", name: { en: "Fresh farang", fr: "Farang tout neuf" } },
-  { at: 40, emoji: "🛺", name: { en: "Tuk-tuk rider", fr: "Pilote de tuk-tuk" } },
-  { at: 120, emoji: "🍜", name: { en: "Street food hunter", fr: "Chasseur de street food" } },
-  { at: 250, emoji: "🛕", name: { en: "Temple wanderer", fr: "Flâneur de temples" } },
-  { at: 450, emoji: "🐘", name: { en: "Friend of the elephant", fr: "Ami de l'éléphant" } },
-  { at: 700, emoji: "👑", name: { en: "Honorary Thai", fr: "Thaï d'honneur" } },
-];
-
-export function levelOf(xp: number) {
+export function levelOf(xp: number, levels: Guide["levels"]) {
   let i = 0;
-  while (i + 1 < LEVELS.length && xp >= LEVELS[i + 1].at) i++;
-  const next = LEVELS[i + 1];
-  return { index: i, level: LEVELS[i], next, from: LEVELS[i].at, to: next?.at ?? null };
+  while (i + 1 < levels.length && xp >= levels[i + 1].at) i++;
+  const next = levels[i + 1];
+  return { index: i, level: levels[i], next, from: levels[i].at, to: next?.at ?? null };
 }
 
-export const BADGES: { id: string; emoji: string; name: L; test: (p: Progress) => boolean }[] = [
-  { id: "talker", emoji: "🗣️", name: { en: "Talker: 10 words", fr: "Bavard : 10 mots" }, test: (p) => p.words.length >= 10 },
-  { id: "polyglot", emoji: "🎓", name: { en: "Polyglot: all words", fr: "Polyglotte : tous les mots" }, test: (p) => p.words.length >= WORDS.length },
-  { id: "scholar", emoji: "📚", name: { en: "Scholar: all cards", fr: "Érudit : toutes les fiches" }, test: (p) => p.cards.length >= CARDS.length },
-  { id: "quizzer", emoji: "🧠", name: { en: "Quiz ace: 10 right", fr: "As du quiz : 10 bonnes" }, test: (p) => Object.values(p.quiz).filter(Boolean).length >= 10 },
-  { id: "bkk", emoji: "🏙️", name: { en: "Bangkok: 6 places", fr: "Bangkok : 6 lieux" }, test: (p) => CITIES[0].places.concat(CITIES[0].eat).filter((x) => p.places.includes(x.id)).length >= 6 },
-  { id: "pkt", emoji: "🏝️", name: { en: "Phuket: 6 places", fr: "Phuket : 6 lieux" }, test: (p) => CITIES[1].places.concat(CITIES[1].eat).filter((x) => p.places.includes(x.id)).length >= 6 },
-  { id: "quests", emoji: "🎯", name: { en: "Adventurer: 10 quests", fr: "Aventurier : 10 défis" }, test: (p) => p.quests.length >= 10 },
-];
+const rightAnswers = (p: Progress) => Object.values(p.quiz).filter(Boolean).length;
+const placesDone = (p: Progress, g: Guide, i: number) => {
+  const c = g.cities[i];
+  return c ? c.places.concat(c.eat).filter((x) => p.places.includes(x.id)).length : 0;
+};
 
-export function useGuideProgress(who: string | undefined) {
+export function badgesFor(g: Guide): { id: string; emoji: string; name: L; test: (p: Progress) => boolean }[] {
+  return [
+    { id: "talker", emoji: "🗣️", name: { en: "Talker: 10 words", fr: "Bavard : 10 mots" }, test: (p) => p.words.length >= 10 },
+    { id: "polyglot", emoji: "🎓", name: { en: "Polyglot: all words", fr: "Polyglotte : tous les mots" }, test: (p) => p.words.length >= g.words.length },
+    { id: "scholar", emoji: "📚", name: { en: "Scholar: all cards", fr: "Érudit : toutes les fiches" }, test: (p) => p.cards.length >= g.cards.length },
+    { id: "quizzer", emoji: "🧠", name: { en: "Quiz ace: 10 right", fr: "As du quiz : 10 bonnes" }, test: (p) => rightAnswers(p) >= 10 },
+    ...g.cities.map((c, i) => ({ id: `city-${c.id}`, emoji: c.emoji, name: { en: `${c.name}: 6 places`, fr: `${c.name} : 6 lieux` }, test: (p: Progress) => placesDone(p, g, i) >= 6 })),
+    { id: "quests", emoji: "🎯", name: { en: "Adventurer: 10 quests", fr: "Aventurier : 10 défis" }, test: (p) => p.quests.length >= 10 },
+  ];
+}
+
+export function useGuideProgress(code: string, who: string | undefined) {
   const [p, setP] = useState<Progress>(EMPTY);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if (!who) return;
     try {
-      const raw = localStorage.getItem(key(who));
+      const raw = localStorage.getItem(key(code, who));
       if (raw) setP({ ...EMPTY, ...JSON.parse(raw) });
     } catch {}
     setReady(true);
-  }, [who]);
+  }, [code, who]);
 
   const save = useCallback(
     (fn: (p: Progress) => Progress) =>
       setP((cur) => {
         const next = fn(cur);
         try {
-          if (who) localStorage.setItem(key(who), JSON.stringify(next));
+          if (who) localStorage.setItem(key(code, who), JSON.stringify(next));
         } catch {}
         return next;
       }),
-    [who],
+    [code, who],
   );
 
   const toggle = useCallback(

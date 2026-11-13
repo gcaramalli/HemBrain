@@ -6,6 +6,7 @@ import { mcpContext, type McpContext } from "./context";
 import { categoryById, categoryOrder, guessCategory } from "@/lib/categories";
 import { familyBirthdays } from "@/lib/occasions";
 import { countryName, findCountry } from "@/lib/countries";
+import { planTrip } from "@/lib/trips";
 import { occurrenceDates, RECURRENCES, type Recurrence } from "@/lib/recurrence";
 import { forIds } from "@/lib/events";
 import { stockholmToUtc, utcToStockholm } from "./time";
@@ -67,7 +68,7 @@ Routing:
   "we moved to the beach in Kamala"): add_journal (kind "stay" for a hotel with its arrival date, and its departure when
   known; kind "day" for what we did, one entry per day, written warmly in the family's voice from what they tell you).
   Use the real date (ask if unsure); don't invent places, prices or times. "What did we do in Bangkok?" / "recap the
-  trip": get_journal. The same notebook is in the app, Travels → Guide → Journal.
+  trip": get_journal. The entry also puts the trip on the Travels timeline and ticks the country on the map. The same notebook is in the app: Travels → the country → Journal.
 - "Send Jennie a little heart": send_gift (an emoji + optional short note, unwrapped in the app).
 - Birthdays of the family's own members (parents, kids): set_birthdate (they show in the calendar and the others are
   reminded the evening before). Weddings, friends' and relatives' birthdays, anniversaries: get_occasions / add_occasion. These are kept out of
@@ -1796,9 +1797,23 @@ export function registerTools(server: McpServer) {
           };
         }),
       );
-      const { error } = await createAdminClient().from("journal_entries").insert(rows);
+      const db = createAdminClient();
+      const { error } = await db.from("journal_entries").insert(rows);
       if (error) throw new Error(error.message);
-      return text({ added: rows.map((r) => `${r.entry_date} ${r.kind}: ${r.title ?? r.place ?? r.body?.slice(0, 40) ?? ""}`) });
+      // Each entry also puts its trip on the timeline (and ticks the country on the map).
+      const onTimeline: string[] = [];
+      const { data: everyone } = await db.from("members").select("id").eq("family_id", familyId());
+      for (const r of [...rows].sort((a, b) => a.entry_date.localeCompare(b.entry_date))) {
+        const { data: trips } = await db.from("trips").select("id, country, start_month, end_month, lived").eq("family_id", familyId()).eq("country", r.country);
+        const plan = planTrip(trips ?? [], r.country, r.entry_date);
+        if (plan.action === "extend") await db.from("trips").update({ end_month: plan.end_month }).eq("id", plan.id).eq("family_id", familyId());
+        if (plan.action === "insert") {
+          const who = r.member_ids.length ? r.member_ids : (everyone ?? []).map((m) => m.id);
+          await db.from("trips").insert({ family_id: familyId(), country: r.country, start_month: plan.start_month, member_ids: who, created_by: createdBy() });
+        }
+        if (plan.action !== "none") onTimeline.push(`${countryName(r.country)} ${r.entry_date.slice(0, 7)}`);
+      }
+      return text({ trip_added_or_extended: onTimeline, added: rows.map((r) => `${r.entry_date} ${r.kind}: ${r.title ?? r.place ?? r.body?.slice(0, 40) ?? ""}`) });
     },
   );
 

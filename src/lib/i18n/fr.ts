@@ -1194,4 +1194,11 @@ export const fr: Record<string, string> = {
   "Day {n}": "Jour {n}",
   "No preschool until": "Pas de crèche jusqu'au",
   "The first day back. Until then nothing is planned or reminded for drop-offs and pick-ups.": "Le premier jour de retour. D'ici là, plus de dépôts ni de récupérations prévus ou rappelés.",
+  "Journal & guide": "Carnet et guide",
+  "The country in cards": "Le pays en fiches",
+  "{a} of {b} read": "{a} lues sur {b}",
+  "1 day written": "1 jour écrit",
+  "{n} days written": "{n} jours écrits",
+  "1 stay": "1 séjour",
+  "{n} stays": "{n} séjours",
 };

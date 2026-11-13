@@ -1194,4 +1194,11 @@ export const sv: Record<string, string> = {
   "Day {n}": "Dag {n}",
   "No preschool until": "Ingen förskola till",
   "The first day back. Until then nothing is planned or reminded for drop-offs and pick-ups.": "Första dagen tillbaka. Fram till dess planeras eller påminns inga lämningar och hämtningar.",
+  "Journal & guide": "Dagbok och guide",
+  "The country in cards": "Landet i kort",
+  "{a} of {b} read": "{a} av {b} lästa",
+  "1 day written": "1 dag skriven",
+  "{n} days written": "{n} dagar skrivna",
+  "1 stay": "1 vistelse",
+  "{n} stays": "{n} vistelser",
 };

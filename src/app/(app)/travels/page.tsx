@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useFamily } from "@/components/family-context";
 import { TravelsHeader } from "@/components/page-header";
@@ -9,6 +10,7 @@ import { Sheet } from "@/components/sheet";
 import { useToast } from "@/components/toast";
 import { WorldMap } from "@/components/world-map";
 import { countryName, flag, parseCountries, REGIONS, whoWent, type Region } from "@/lib/countries";
+import { GUIDES } from "@/lib/guides";
 import type { Member, Trip, VisitedCountry } from "@/lib/types";
 
 // three.js only loads here, and only when the globe is shown.
@@ -79,6 +81,18 @@ export default function TravelsPage() {
       <TravelsHeader back="/" backLabel={t("Home")} action={<button className="btn" onClick={() => setAdding(true)}>+ {t("Countries")}</button>} />
       <PageHem topic="travels" />
 
+      <section className="flex gap-2 overflow-x-auto pb-1">
+        {Object.keys(GUIDES).map((c) => (
+          <Link key={c} href={`/travels/country/${c}`} className="card flex shrink-0 items-center gap-3 px-4 py-3 active:scale-[0.98] transition-transform">
+            <span className="text-2xl" aria-hidden>{flag(c)}</span>
+            <span>
+              <span className="block font-semibold leading-tight">{name(c)}</span>
+              <span className="block text-xs text-muted">{t("Journal & guide")}</span>
+            </span>
+          </Link>
+        ))}
+      </section>
+
       <div className="flex gap-2 overflow-x-auto pb-1">
         <button className={`chip-toggle ${focus === null ? "chip-on" : ""}`} onClick={() => setFocus(null)}>
           {t("Everyone")} · {who.size}
@@ -138,6 +152,7 @@ export default function TravelsPage() {
                   <button className="flex min-h-9 items-center gap-2 text-left" onClick={() => setPicked(c)}>
                     <span aria-hidden>{flag(c)}</span>
                     {name(c)}
+                    {c in GUIDES && <span aria-hidden title={t("Journal & guide")}>📖</span>}
                   </button>
                 </td>
                 {shown.map((m) => (
@@ -199,6 +214,9 @@ function CountrySheet({
   };
   return (
     <Sheet open onClose={onClose} title={`${flag(code)} ${countryName(code, locale)}`}>
+      <Link href={`/travels/country/${code}`} className="btn mb-3 w-full text-center">
+        📓 {code in GUIDES ? t("Journal & guide") : t("Journal")}
+      </Link>
       <ul className="flex flex-col gap-3">
         {members.map((m) => {
           const row = visits.find((v) => v.member_id === m.id && v.country === code);

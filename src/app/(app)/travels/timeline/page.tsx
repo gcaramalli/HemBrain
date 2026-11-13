@@ -6,7 +6,8 @@ import { TravelsHeader } from "@/components/page-header";
 import { Sheet } from "@/components/sheet";
 import { useToast } from "@/components/toast";
 import { countryName, findCountry, flag, tripWhen } from "@/lib/countries";
-import type { Trip } from "@/lib/types";
+import Link from "next/link";
+import type { JournalEntry, Trip } from "@/lib/types";
 
 type Draft = { id?: string; place: string; start: string; end: string; lived: boolean; note: string; member_ids: string[] };
 
@@ -18,6 +19,7 @@ export default function TimelinePage() {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [person, setPerson] = useState<string | null>(me?.id ?? null);
   const [editing, setEditing] = useState<Draft | null>(null);
+  const [journal, setJournal] = useState<Pick<JournalEntry, "country" | "kind" | "entry_date">[]>([]);
 
   const load = useCallback(async () => {
     const { data } = await supabase.from("trips").select("*").order("start_month", { ascending: false, nullsFirst: false }).order("created_at");
@@ -26,7 +28,11 @@ export default function TimelinePage() {
 
   useEffect(() => {
     load();
-  }, [load]);
+    supabase
+      .from("journal_entries")
+      .select("country, kind, entry_date")
+      .then(({ data }) => setJournal((data ?? []) as typeof journal));
+  }, [load, supabase]);
 
   const mine = trips.filter((x) => !person || x.member_ids.includes(person));
   // The first trip to each country gets a "first time" mark.
@@ -115,6 +121,7 @@ export default function TimelinePage() {
                     </span>
                     <span className="shrink-0 text-sm capitalize text-muted">{tripWhen(x, locale, t)}</span>
                   </button>
+                  <JournalLine trip={x} entries={journal} />
                 </li>
               );
             })}
@@ -200,5 +207,22 @@ function TripSheet({ draft, setDraft, onSaved, onDelete }: { draft: Draft | null
         </div>
       </form>
     </Sheet>
+  );
+}
+
+// "3 days written · 2 stays": what the trip's journal holds, one tap away.
+function JournalLine({ trip, entries }: { trip: Trip; entries: Pick<JournalEntry, "country" | "kind" | "entry_date">[] }) {
+  const { t } = useFamily();
+  if (!trip.start_month) return null;
+  const from = trip.start_month.slice(0, 7);
+  const to = (trip.end_month ?? trip.start_month).slice(0, 7);
+  const mine = entries.filter((e) => e.country === trip.country && e.entry_date.slice(0, 7) >= from && e.entry_date.slice(0, 7) <= to);
+  if (!mine.length) return null;
+  const days = mine.filter((e) => e.kind === "day").length;
+  const stays = mine.filter((e) => e.kind === "stay").length;
+  return (
+    <Link href={`/travels/country/${trip.country}`} className="mb-2 ml-12 flex w-fit items-center gap-1 rounded-full bg-accent-soft px-3 py-1 text-xs font-medium">
+      📓 {[days ? (days === 1 ? t("1 day written") : t("{n} days written", { n: days })) : "", stays ? (stays === 1 ? t("1 stay") : t("{n} stays", { n: stays })) : ""].filter(Boolean).join(" · ")}
+    </Link>
   );
 }

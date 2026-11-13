@@ -2,29 +2,12 @@
 // content is stored in English and French, other app languages show the English text.
 // Prices and opening hours drift: they are indicative, check on the spot.
 
-export type L = { en: string; fr: string };
+import type { Card, City, Guide, Level, Question, Quest, Word } from "./index";
+
+type L = { en: string; fr: string };
 const L = (en: string, fr: string): L => ({ en, fr });
 
-export type Card = { id: string; emoji: string; title: L; lead: L; points: L[] };
-export type Word = { id: string; thai: string; say: string; en: string; fr: string; group: "basics" | "eat" | "move" | "numbers" | "soul" };
-export type Place = { id: string; emoji: string; name: string; what: L; tip?: L; kids?: boolean; area?: string };
-export type City = {
-  id: "bangkok" | "phuket";
-  emoji: string;
-  name: string;
-  thai: string;
-  intro: L;
-  facts: { label: L; value: L }[];
-  areas: { name: string; what: L }[];
-  places: Place[];
-  eat: Place[];
-  tips: L[];
-  center: string; // for "open in maps"
-};
-export type Quest = { id: string; emoji: string; title: L; hint?: L; where?: "bangkok" | "phuket" };
-export type Question = { id: string; q: L; options: L[]; answer: number; why: L };
-
-export const CARDS: Card[] = [
+const CARDS: Card[] = [
   {
     id: "history",
     emoji: "📜",
@@ -112,7 +95,7 @@ export const CARDS: Card[] = [
   },
 ];
 
-export const WORDS: Word[] = [
+const WORDS: Word[] = [
   { id: "hello", thai: "สวัสดี", say: "sa-wat-dee", en: "Hello / goodbye", fr: "Bonjour / au revoir", group: "basics" },
   { id: "khrap", thai: "ครับ / ค่ะ", say: "khrap / kha", en: "Polite ending: men say khrap, women say kha", fr: "Politesse finale : khrap pour les hommes, kha pour les femmes", group: "basics" },
   { id: "thanks", thai: "ขอบคุณ", say: "khop khun", en: "Thank you", fr: "Merci", group: "basics" },
@@ -149,7 +132,7 @@ export const WORDS: Word[] = [
   { id: "farang", thai: "ฝรั่ง", say: "fa-rang", en: "Foreigner (also guava). Not an insult.", fr: "Étranger occidental (et aussi la goyave). Pas une insulte.", group: "soul" },
 ];
 
-export const WORD_GROUPS: { id: Word["group"]; label: L }[] = [
+const WORD_GROUPS: Guide["wordGroups"] = [
   { id: "basics", label: L("Basics", "Les bases") },
   { id: "eat", label: L("Eating & shopping", "Manger et acheter") },
   { id: "move", label: L("Getting around", "Se déplacer") },
@@ -157,7 +140,7 @@ export const WORD_GROUPS: { id: Word["group"]; label: L }[] = [
   { id: "soul", label: L("Thai spirit", "Esprit thaï") },
 ];
 
-export const CITIES: City[] = [
+const CITIES: City[] = [
   {
     id: "bangkok",
     emoji: "🏙️",
@@ -264,7 +247,7 @@ export const CITIES: City[] = [
   },
 ];
 
-export const QUESTS: Quest[] = [
+const QUESTS: Quest[] = [
   { id: "q-hello", emoji: "👋", title: L("Say 'sawatdee khrap/kha' to a stranger", "Dire « sawatdee khrap/kha » à un inconnu"), hint: L("Guillaume: khrap. Jenny: kha.", "Guillaume : khrap. Jenny : kha.") },
   { id: "q-wai", emoji: "🙏", title: L("Answer a wai", "Répondre à un wai") },
   { id: "q-count", emoji: "🔢", title: L("Count to 10 in Thai to a taxi driver or a vendor", "Compter jusqu'à 10 en thaï devant un chauffeur ou un vendeur") },
@@ -288,7 +271,7 @@ export const QUESTS: Quest[] = [
   { id: "q-krathong", emoji: "🪷", title: L("Float a krathong for Loy Krathong (around 24 Nov)", "Faire flotter un krathong pour Loy Krathong (vers le 24 nov.)"), hint: L("Choose a biodegradable one made of banana leaf, not foam.", "Choisis-en un biodégradable en feuille de bananier, pas en polystyrène.") },
 ];
 
-export const QUESTIONS: Question[] = [
+const QUESTIONS: Question[] = [
   { id: "z-colony", q: L("What is special about Thailand in South-East Asia?", "Qu'est-ce qui distingue la Thaïlande en Asie du Sud-Est ?"), options: [L("It has no coastline", "Elle n'a pas de côte"), L("It was never colonised by a European power", "Elle n'a jamais été colonisée par une puissance européenne"), L("It has no king", "Elle n'a pas de roi"), L("It is an island", "C'est une île")], answer: 1, why: L("Siam kept its independence by balancing the French and the British.", "Le Siam a gardé son indépendance en jouant sur l'équilibre entre Français et Britanniques.") },
   { id: "z-siam", q: L("When did Siam become Thailand?", "Quand le Siam est-il devenu la Thaïlande ?"), options: [L("1782", "1782"), L("1905", "1905"), L("1939", "1939"), L("1999", "1999")], answer: 2, why: L("Under Phibun, in 1939. 'Thai' also means 'free'.", "Sous Phibun, en 1939. « Thaï » signifie aussi « libre ».") },
   { id: "z-capital", q: L("Which city was Thailand's capital before Bangkok, destroyed by Burma in 1767?", "Quelle ville était la capitale avant Bangkok, détruite par la Birmanie en 1767 ?"), options: [L("Ayutthaya", "Ayutthaya"), L("Chiang Mai", "Chiang Mai"), L("Phuket", "Phuket"), L("Pattaya", "Pattaya")], answer: 0, why: L("Ayutthaya's ruins are a day trip from Bangkok.", "Les ruines d'Ayutthaya sont une excursion d'une journée depuis Bangkok.") },
@@ -309,10 +292,13 @@ export const QUESTIONS: Question[] = [
   { id: "z-loy", q: L("What do people float for Loy Krathong?", "Que fait-on flotter pour Loy Krathong ?"), options: [L("A little lotus boat with a candle", "Un petit bateau en lotus avec une bougie"), L("A paper plane", "Un avion en papier"), L("A rubber duck", "Un canard en plastique"), L("A flag", "Un drapeau")], answer: 0, why: L("It thanks the water goddess and lets go of bad luck. Full moon of the 12th lunar month.", "On remercie la déesse de l'eau et on laisse partir la malchance. Pleine lune du 12e mois lunaire.") },
 ];
 
-export const GUIDE_TOTALS = {
-  cards: CARDS.length,
-  words: WORDS.length,
-  places: CITIES.reduce((n, c) => n + c.places.length, 0),
-  quests: QUESTS.length,
-  questions: QUESTIONS.length,
-};
+const LEVELS: Level[] = [
+  { at: 0, emoji: "🎒", name: L("Fresh farang", "Farang tout neuf") },
+  { at: 40, emoji: "🛺", name: L("Tuk-tuk rider", "Pilote de tuk-tuk") },
+  { at: 120, emoji: "🍜", name: L("Street food hunter", "Chasseur de street food") },
+  { at: 250, emoji: "🛕", name: L("Temple wanderer", "Flâneur de temples") },
+  { at: 450, emoji: "🐘", name: L("Friend of the elephant", "Ami de l'éléphant") },
+  { at: 700, emoji: "👑", name: L("Honorary Thai", "Thaï d'honneur") },
+];
+
+export const thailand: Guide = { code: "TH", cards: CARDS, words: WORDS, wordGroups: WORD_GROUPS, cities: CITIES, quests: QUESTS, questions: QUESTIONS, levels: LEVELS };
