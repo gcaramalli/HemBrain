@@ -147,6 +147,7 @@ const CITIES: City[] = [
     name: "Bangkok",
     thai: "กรุงเทพฯ · Krung Thep",
     center: "Bangkok, Thailand",
+    timelapse: "bangkok",
     intro: L(
       "Thais call it Krung Thep, 'city of angels'. Its full ceremonial name is the longest city name in the world (168 letters). A hot, loud, generous mega-city of temples, canals, skyscrapers and food at every corner.",
       "Les Thaïs l'appellent Krung Thep, « la cité des anges ». Son nom officiel complet est le plus long nom de ville du monde (168 lettres). Une mégapole chaude, bruyante et généreuse : temples, canaux, gratte-ciels et nourriture à chaque coin de rue.",

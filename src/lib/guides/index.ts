@@ -18,6 +18,7 @@ export type City = {
   eat: Place[];
   tips: L[];
   center: string; // for "open in maps"
+  timelapse?: string; // sub-page with the city growing in 3D
 };
 export type Quest = { id: string; emoji: string; title: L; hint?: L; where?: string };
 export type Question = { id: string; q: L; options: L[]; answer: number; why: L };

@@ -302,6 +302,7 @@ function Words({ g, p, tx, toggle }: { g: Guide; p: Progress; tx: Tx; toggle: To
 
 function CityView({ city, p, tx, toggle }: { city: City; p: Progress; tx: Tx; toggle: Toggle }) {
   const { t } = useFamily();
+  const { code: country } = useParams<{ code: string }>();
   const [kids, setKids] = useState(false);
   const all = [...city.places, ...city.eat];
   const seen = all.filter((x) => p.places.includes(x.id)).length;
@@ -309,6 +310,16 @@ function CityView({ city, p, tx, toggle }: { city: City; p: Progress; tx: Tx; to
   const list = (items: Place[]) => items.filter((x) => !kids || x.kids);
   return (
     <>
+      {city.timelapse && (
+        <Link href={`/travels/country/${String(country).toUpperCase()}/${city.timelapse}`} className="card flex items-center gap-3 p-4 active:scale-[0.98] transition-transform">
+          <span className="text-3xl" aria-hidden>🏗️</span>
+          <span className="min-w-0 grow">
+            <span className="block font-bold leading-tight">{t("{city} in 3D, 1767 → today", { city: city.name })}</span>
+            <span className="block text-sm text-muted">{t("Watch the city grow, event by event.")}</span>
+          </span>
+          <span aria-hidden className="text-muted">›</span>
+        </Link>
+      )}
       <section className="card flex flex-col gap-3 p-4">
         <div className="flex items-center gap-3">
           <span className="text-4xl" aria-hidden>{city.emoji}</span>
