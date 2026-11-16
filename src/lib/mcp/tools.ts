@@ -68,7 +68,8 @@ Routing:
   "we moved to the beach in Kamala"): add_journal (kind "stay" for a hotel with its arrival date, and its departure when
   known; kind "day" for what we did, one entry per day, written warmly in the family's voice from what they tell you).
   Use the real date (ask if unsure); don't invent places, prices or times. "What did we do in Bangkok?" / "recap the
-  trip": get_journal. The entry also puts the trip on the Travels timeline and ticks the country on the map. The same notebook is in the app: Travels → the country → Journal.
+  trip": get_journal. To add to, correct or remove an entry already written (never write the same day twice):
+  update_journal_entry (found by date + title, or by the id get_journal gives). The entry also puts the trip on the Travels timeline and ticks the country on the map. The same notebook is in the app: Travels → the country → Journal.
 - "Send Jennie a little heart": send_gift (an emoji + optional short note, unwrapped in the app).
 - Birthdays of the family's own members (parents, kids): set_birthdate (they show in the calendar and the others are
   reminded the evening before). Weddings, friends' and relatives' birthdays, anniversaries: get_occasions / add_occasion. These are kept out of
@@ -1859,13 +1860,76 @@ export function registerTools(server: McpServer) {
       if (!code) throw new Error(`Unknown country "${country}"`);
       const { data, error } = await createAdminClient()
         .from("journal_entries")
-        .select("kind, entry_date, end_date, title, body, place, city")
+        .select("id, kind, entry_date, end_date, title, body, place, city")
         .eq("family_id", familyId())
         .eq("country", code)
         .order("entry_date")
         .order("created_at");
       if (error) throw new Error(error.message);
       return text({ country: countryName(code), stays: (data ?? []).filter((r) => r.kind === "stay"), days: (data ?? []).filter((r) => r.kind === "day") });
+    },
+  );
+
+  server.registerTool(
+    "update_journal_entry",
+    {
+      title: "Correct or remove a journal entry",
+      description:
+        "Change a stay or day note already in the travel journal (new text, title, place, city, date, who), or remove it with delete: true (only when asked, e.g. a duplicate). Find it by id (from get_journal) or by date, plus part of its title when a day has several. Fields left out stay as they are; text replaces the whole note, so send the complete wording.",
+      inputSchema: z.object({
+        id: z.string().optional().describe("Entry id from get_journal"),
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("The entry's current date"),
+        match: z.string().optional().describe("Part of its title or place, to pick one when several share the date"),
+        kind: z.enum(["stay", "day"]).optional(),
+        country: z.string().optional().describe("ISO code or name, default Thailand"),
+        new_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        title: z.string().max(200).optional(),
+        text: z.string().max(4000).optional(),
+        place: z.string().max(200).optional(),
+        city: z.string().max(100).optional(),
+        who: z.array(z.string()).optional().describe("First names; empty list = the whole family"),
+        delete: z.boolean().optional().describe("Remove the entry. Only when explicitly asked."),
+      }),
+    },
+    async ({ id, date, match, kind, country, new_date, title, text: body, place, city, who, delete: remove }) => {
+      if (!id && !date) throw new Error("Give the entry's id or its date");
+      const db = createAdminClient();
+      let q = db.from("journal_entries").select("id, kind, entry_date, title, place").eq("family_id", familyId());
+      if (id) q = q.eq("id", id);
+      else {
+        const code = country ? findCountry(country) : "TH";
+        if (!code) throw new Error(`Unknown country "${country}"`);
+        q = q.eq("country", code).eq("entry_date", date!);
+        if (kind) q = q.eq("kind", kind);
+      }
+      const { data, error: findError } = await q;
+      if (findError) throw new Error(findError.message);
+      const n = match?.trim().toLowerCase();
+      const hits = (data ?? []).filter((r) => !n || `${r.title ?? ""} ${r.place ?? ""}`.toLowerCase().includes(n));
+      if (hits.length !== 1) {
+        throw new Error(
+          hits.length
+            ? `Several entries match, pass id or match: ${hits.map((r) => `${r.id} (${r.kind} ${r.entry_date} ${r.title ?? r.place ?? ""})`).join("; ")}`
+            : "No journal entry matches",
+        );
+      }
+      const hit = hits[0];
+      if (remove) {
+        const { error } = await db.from("journal_entries").delete().eq("id", hit.id).eq("family_id", familyId());
+        if (error) throw new Error(error.message);
+        return text({ removed: `${hit.entry_date} ${hit.kind}: ${hit.title ?? hit.place ?? ""}` });
+      }
+      const patch: Record<string, unknown> = {};
+      if (new_date) patch.entry_date = new_date;
+      if (title !== undefined) patch.title = title.trim() || null;
+      if (body !== undefined) patch.body = body.trim() || null;
+      if (place !== undefined) patch.place = place.trim() || null;
+      if (city !== undefined) patch.city = city.trim() || null;
+      if (who) patch.member_ids = (await Promise.all(who.map((w) => memberIdByName(w)))) as string[];
+      if (!Object.keys(patch).length) throw new Error("Nothing to change");
+      const { error } = await db.from("journal_entries").update(patch).eq("id", hit.id).eq("family_id", familyId());
+      if (error) throw new Error(error.message);
+      return text({ updated: `${hit.entry_date} ${hit.kind}: ${hit.title ?? hit.place ?? ""}`, changed: Object.keys(patch) });
     },
   );
 
