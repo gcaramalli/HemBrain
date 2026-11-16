@@ -1,6 +1,5 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useFamily } from "@/components/family-context";
@@ -11,20 +10,14 @@ import { useToast } from "@/components/toast";
 import { WorldMap } from "@/components/world-map";
 import { countryName, flag, parseCountries, REGIONS, whoWent, type Region } from "@/lib/countries";
 import { GUIDES } from "@/lib/guides";
-import type { Member, Trip, VisitedCountry } from "@/lib/types";
+import type { Member, VisitedCountry } from "@/lib/types";
 
-// three.js only loads here, and only when the globe is shown.
-const Globe = dynamic(() => import("@/components/globe").then((m) => m.Globe), { ssr: false, loading: () => <div className="aspect-square max-h-[28rem] w-full" /> });
-const VIEW_KEY = "travels-view";
-
-// Where each of us has been: a globe (or flat map) coloured by person, and one column per
+// Where each of us has been: a map coloured by person, and one column per
 // person to tick countries off. Pasting a list ("Allemagne, Japon…") adds many at once.
 export default function TravelsPage() {
   const { supabase, members, locale, t } = useFamily();
   const toast = useToast();
   const [visits, setVisits] = useState<VisitedCountry[]>([]);
-  const [trips, setTrips] = useState<Trip[]>([]);
-  const [flat, setFlat] = useState(false);
   const [region, setRegion] = useState<Region>("world");
   const [focus, setFocus] = useState<string | null>(null); // one person, or everyone
   const [picked, setPicked] = useState<string | null>(null);
@@ -37,23 +30,7 @@ export default function TravelsPage() {
 
   useEffect(() => {
     load();
-    supabase
-      .from("trips")
-      .select("*")
-      .then(({ data }) => setTrips((data ?? []) as Trip[]));
-  }, [load, supabase]);
-
-  useEffect(() => {
-    try {
-      if (localStorage.getItem(VIEW_KEY) === "map") setFlat(true);
-    } catch {}
-  }, []);
-  const view = (map: boolean) => {
-    setFlat(map);
-    try {
-      localStorage.setItem(VIEW_KEY, map ? "map" : "globe");
-    } catch {}
-  };
+  }, [load]);
 
   const who = useMemo(() => whoWent(visits), [visits]);
   const name = (code: string) => countryName(code, locale);
@@ -106,18 +83,7 @@ export default function TravelsPage() {
       </div>
 
       <div className="card relative overflow-hidden p-2">
-        {flat ? (
-          <WorldMap who={who} people={shown} region={region} onPick={setPicked} />
-        ) : (
-          <Globe who={who} people={shown} trips={trips} region={region} onPick={setPicked} fallback={<WorldMap who={who} people={shown} region={region} onPick={setPicked} />} />
-        )}
-        <div className="absolute right-2 top-2 flex rounded-full bg-accent-soft p-0.5 text-xs">
-          {[false, true].map((map) => (
-            <button key={String(map)} onClick={() => view(map)} aria-pressed={flat === map} className={`min-h-7 rounded-full px-2.5 ${flat === map ? "bg-[var(--pill)] font-semibold shadow-sm" : "text-muted"}`}>
-              {map ? t("Map") : t("Globe")}
-            </button>
-          ))}
-        </div>
+        <WorldMap who={who} people={shown} region={region} onPick={setPicked} />
       </div>
 
       <div className="flex gap-1 overflow-x-auto rounded-full bg-accent-soft p-1 text-sm">

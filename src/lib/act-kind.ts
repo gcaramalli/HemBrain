@@ -1,5 +1,5 @@
 // What kind of scene an event is, guessed from its title in English, French or
-// Swedish (the 3D week, the living house). No three.js here, so any page can use it.
+// Swedish (the 3D week). No three.js here, so any page can use it.
 export type ActKind =
   | "meal" | "drinks" | "swim" | "racket" | "volley" | "sport" | "hair" | "homeoffice" | "health" | "party" | "family" | "travel" | "show"
   | "lesson" | "work" | "shop" | "outing" | "cleaning" | "repair" | "unknown";

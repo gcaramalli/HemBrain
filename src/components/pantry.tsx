@@ -1,6 +1,5 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useFamily } from "./family-context";
 import { useToast } from "./toast";
@@ -8,18 +7,15 @@ import { guessCategory } from "@/lib/categories";
 import { fmtDate } from "@/lib/dates";
 import { stockOf, type Stock } from "@/lib/restock";
 
-const Pantry3D = dynamic(() => import("./pantry-3d"), { ssr: false });
 const DAY = 86_400_000;
 
-// Kitchen → Purchases: the pantry. What we buy regularly as jars on a shelf,
-// each as full as what's probably left, soonest due first; tap one for how
-// often we buy it and when next, and put it on the shopping list.
+// Kitchen → Purchases: what we buy regularly, soonest due first; tap one for
+// how often we buy it and when next, and put it on the shopping list.
 export function Pantry({ refreshKey }: { refreshKey?: number }) {
   const { supabase, t } = useFamily();
   const toast = useToast();
   const [rows, setRows] = useState<{ item_name: string; purchased_at: string }[] | null>(null);
   const [picked, setPicked] = useState<number | null>(null);
-  const [flat, setFlat] = useState(false);
   const [now, setNow] = useState(0); // set once loaded (no clock reads while rendering)
 
   const load = useCallback(async () => {
@@ -36,7 +32,6 @@ export function Pantry({ refreshKey }: { refreshKey?: number }) {
   if (!rows || stock.length === 0) return null;
 
   const days = (s: Stock) => (s.next ? Math.round((s.next.getTime() - now) / DAY) : null);
-  const jars = stock.map((s) => ({ left: s.left, soon: (days(s) ?? 99) <= 3 }));
   const sel = picked !== null ? stock[picked] : null;
 
   async function addToList(s: Stock) {
@@ -54,12 +49,7 @@ export function Pantry({ refreshKey }: { refreshKey?: number }) {
   };
 
   return (
-    <section className="card flex flex-col gap-2 p-0">
-      {!flat && (
-        <div className="relative aspect-square max-h-[26rem] w-full">
-          <Pantry3D jars={jars} names={stock.map((s) => s.name)} onPick={setPicked} onFail={() => setFlat(true)} />
-        </div>
-      )}
+    <section className="card flex flex-col gap-2 p-0 pt-4">
       <div className="flex flex-col gap-2 px-4 pb-4">
         {sel ? (
           <>
@@ -67,7 +57,7 @@ export function Pantry({ refreshKey }: { refreshKey?: number }) {
             <p className="text-sm text-muted">{when(sel)}</p>
             <button className="btn self-start" onClick={() => addToList(sel)}>+ {t("Shopping list")}</button>
           </>
-        ) : flat ? (
+        ) : (
           <ul className="divide-y divide-border text-sm">
             {stock.map((s, i) => (
               <li key={s.key}>
@@ -78,8 +68,6 @@ export function Pantry({ refreshKey }: { refreshKey?: number }) {
               </li>
             ))}
           </ul>
-        ) : (
-          <p className="text-sm text-muted">{t("Each jar is as full as what's probably left. Tap one to see how often you buy it.")}</p>
         )}
       </div>
     </section>
