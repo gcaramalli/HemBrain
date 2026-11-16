@@ -1,20 +1,15 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
 import { useFamily } from "./family-context";
 import { fmtDate } from "@/lib/dates";
 import type { Gift } from "@/lib/types";
-
-// The box in 3D; three.js only loads when a gift is waiting. Until then (or without WebGL), the 🎁.
-const Gift3D = dynamic(() => import("./gift-3d"), { ssr: false, loading: () => <div className="my-2 flex h-56 items-center justify-center text-8xl">🎁</div> });
 
 // Unwraps gifts sent to me, one at a time, when I open the app (or live).
 export function GiftInbox() {
   const { supabase, profile, members, t } = useFamily();
   const [queue, setQueue] = useState<Gift[]>([]);
   const [opened, setOpened] = useState(false);
-  const [flat, setFlat] = useState(false); // no WebGL: the emoji box
 
   const load = useCallback(async () => {
     const { data } = await supabase
@@ -61,18 +56,10 @@ export function GiftInbox() {
             <p className="text-lg font-semibold" style={{ color: sender?.color }}>{sender?.emoji} {from}</p>
           </>
         )}
-        {/* One box for both states, so the same scene plays the opening. */}
-        {flat ? (
-          opened ? (
-            <div className="animate-gift-pop my-4 text-8xl">{gift.emoji}</div>
-          ) : (
-            <button onClick={unwrap} className="animate-gift-wiggle my-6 text-8xl" aria-label={t("Open the gift")}>🎁</button>
-          )
+        {opened ? (
+          <div className="animate-gift-pop my-4 text-8xl">{gift.emoji}</div>
         ) : (
-          <div className="relative">
-            <Gift3D key={gift.id} color={sender?.color ?? "#2c55d4"} opened={opened} onOpen={unwrap} onFail={() => setFlat(true)} />
-            {opened && <div className="animate-gift-pop pointer-events-none absolute inset-x-0 top-0 text-7xl [animation-delay:350ms]">{gift.emoji}</div>}
-          </div>
+          <button onClick={unwrap} className="animate-gift-wiggle my-6 text-8xl" aria-label={t("Open the gift")}>🎁</button>
         )}
         {!opened ? (
           <button onClick={unwrap} className="btn w-full">{t("Open")}</button>

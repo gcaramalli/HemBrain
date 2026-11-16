@@ -2,7 +2,6 @@
 
 import { AskHem } from "@/components/ask-hem";
 import { Moon, Sun } from "lucide-react";
-import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useFamily } from "@/components/family-context";
 import { useKid } from "@/components/kid-context";
@@ -14,10 +13,8 @@ import { avgClock, fmtDuration, minutesBetween, nightDay, sleepDays, sleepState 
 import type { KidSleep } from "@/lib/types";
 
 // The last 24 hours as a dial in 3D; three.js loads after the page.
-const SleepDial3D = dynamic(() => import("@/components/kid-3d").then((m) => m.SleepDial3D), { ssr: false });
 
 const DAYS = 14;
-const QUARTER = 15 * 60_000;
 type Draft = Pick<KidSleep, "kind" | "starts_at" | "ends_at" | "wakings" | "notes"> & { id?: string };
 
 const localDay = (iso: string) => dayKey(new Date(iso));
@@ -34,8 +31,7 @@ export default function SleepPage() {
   const toast = useToast();
   const [entries, setEntries] = useState<KidSleep[]>([]);
   const [editing, setEditing] = useState<Draft | null>(null);
-  const [now, tick] = useState(() => Date.now());
-  const [flat, setFlat] = useState(false);
+  const [, tick] = useState(() => Date.now());
   const kidId = kid?.id;
 
   const load = useCallback(async () => {
@@ -60,17 +56,6 @@ export default function SleepPage() {
   }, [supabase, load]);
 
   const days = useMemo(() => sleepDays(entries, localDay), [entries]);
-
-  // The last 24 h in quarters of an hour: awake (0), a nap (1) or the night (2).
-  const slots = useMemo(() => {
-    // The dial only moves every quarter of an hour, so a minute's tick doesn't rebuild it.
-    const end = Math.floor(now / QUARTER) * QUARTER;
-    return Array.from({ length: 96 }, (_, i) => {
-      const at = end - (95 - i) * QUARTER + QUARTER / 2;
-      const e = entries.find((x) => new Date(x.starts_at).getTime() <= at && (x.ends_at ? new Date(x.ends_at).getTime() : now) > at);
-      return (e ? (e.kind === "night" ? 2 : 1) : 0) as 0 | 1 | 2;
-    });
-  }, [entries, now]);
 
   if (!kid) return null;
 
@@ -148,21 +133,6 @@ export default function SleepPage() {
         fold
         hint={t("Ask Hem “when should {name} go to bed tonight?”: it reads the last days here.", { name: kid.name })}
       />
-
-      {!flat && (
-        <div className="card relative aspect-[4/3] overflow-hidden p-0">
-          <SleepDial3D
-            dial={{
-              slots,
-              nowMinutes: Math.floor((new Date(Math.floor(now / QUARTER) * QUARTER).getHours() * 60 + new Date(Math.floor(now / QUARTER) * QUARTER).getMinutes())),
-              color: kid.color,
-              asleep: !!state?.asleep,
-              night: new Date(now).getHours() >= 19 || new Date(now).getHours() < 7,
-            }}
-            onFail={() => setFlat(true)}
-          />
-        </div>
-      )}
 
       <section className="card flex flex-col gap-3">
         {state?.asleep && current ? (
