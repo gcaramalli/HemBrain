@@ -19,7 +19,7 @@ for (const f of files) {
   for (const m of src.matchAll(/\bt\(\s*"((?:[^"\\]|\\.)*)"/g)) keys.add(JSON.parse(`"${m[1]}"`));
 }
 // Labels translated at runtime with t(label).
-for (const [file, field] of [["src/lib/categories.ts", "label"], ["src/lib/recurrence.ts", "label"], ["src/components/send-gift.tsx", "hint"], ["src/lib/meals.ts", "label"], ["src/app/welcome/page.tsx", "title"], ["src/app/welcome/page.tsx", "body"], ["src/lib/work.ts", "label"], ["src/lib/wardrobe.ts", "label"], ["src/lib/wardrobe.ts", "title"], ["src/lib/feedback.ts", "label"], ["src/lib/papers.ts", "label"]]) {
+for (const [file, field] of [["src/lib/categories.ts", "label"], ["src/lib/recurrence.ts", "label"], ["src/components/send-gift.tsx", "hint"], ["src/lib/meals.ts", "label"], ["src/app/welcome/page.tsx", "title"], ["src/app/welcome/page.tsx", "body"], ["src/lib/work.ts", "label"], ["src/lib/wardrobe.ts", "label"], ["src/lib/wardrobe.ts", "title"], ["src/lib/feedback.ts", "label"], ["src/lib/papers.ts", "label"], ["src/lib/people.ts", "label"]]) {
   for (const m of readFileSync(file, "utf8").matchAll(new RegExp(`${field}: "([^"]+)"`, "g"))) keys.add(m[1]);
 }
 

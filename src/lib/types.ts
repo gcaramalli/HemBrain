@@ -87,6 +87,33 @@ export type Occasion = {
   member_ids: string[];
   ended: boolean;
   notes: string | null;
+  // The people it is about (0036); older rows are matched by name.
+  person_ids?: string[];
+};
+
+// Someone around the family (a friend, a relative, a friend's child).
+export type Person = {
+  id: string;
+  name: string;
+  relation: string | null;
+  circle: "relative" | "friend" | "child" | "other";
+  parent_ids: string[];
+  language: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+// One thing worth remembering about people and / or family members.
+export type Memory = {
+  id: string;
+  kind: "like" | "dislike" | "gift_idea" | "gift_given" | "size" | "allergy" | "fact" | "moment";
+  body: string;
+  person_ids: string[];
+  member_ids: string[];
+  happened_on: string | null;
+  created_by: string | null;
+  created_at: string;
 };
 
 export type List = { id: string; name: string; kind: "grocery" | "todo"; position: number };

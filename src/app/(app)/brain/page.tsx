@@ -4,6 +4,7 @@ import { Pin } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useFamily } from "@/components/family-context";
 import { OccasionsPanel } from "@/components/occasions-panel";
+import { PeoplePanel } from "@/components/people-panel";
 import { PageHeader } from "@/components/page-header";
 import { PageHem } from "@/components/page-hem";
 import { Sheet } from "@/components/sheet";
@@ -20,11 +21,12 @@ export default function BrainPage() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<Draft | null>(null);
-  const [tab, setTab] = useState<"notes" | "dates">("notes");
+  const [tab, setTab] = useState<"notes" | "people" | "dates">("notes");
 
-  // Deep link from reminders and the calendar: /brain?tab=dates
+  // Deep link from reminders and the calendar: /brain?tab=dates (or people)
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("tab") === "dates") setTab("dates");
+    const wanted = new URLSearchParams(window.location.search).get("tab");
+    if (wanted === "dates" || wanted === "people") setTab(wanted);
   }, []);
 
   const load = useCallback(async () => {
@@ -75,14 +77,14 @@ export default function BrainPage() {
         action={tab === "notes" && <button className="btn" onClick={() => setEditing({ title: "", body: "", pinned: false, tags: "" })}>+ {t("Note")}</button>}
       />
       <PageHem topic="brain" />
-      <div className="grid grid-cols-2 rounded-full bg-accent-soft p-1 text-sm">
-        {(["notes", "dates"] as const).map((x) => (
+      <div className="grid grid-cols-3 rounded-full bg-accent-soft p-1 text-sm">
+        {(["notes", "people", "dates"] as const).map((x) => (
           <button key={x} onClick={() => setTab(x)} className={`min-h-9 rounded-full ${tab === x ? "bg-[var(--pill)] font-semibold shadow-sm" : "text-muted"}`}>
-            {x === "notes" ? t("Notes") : t("Dates")}
+            {x === "notes" ? t("Notes") : x === "people" ? t("People") : t("Dates")}
           </button>
         ))}
       </div>
-      {tab === "dates" ? <OccasionsPanel /> : <>
+      {tab === "dates" ? <OccasionsPanel /> : tab === "people" ? <PeoplePanel /> : <>
       <input className="input" placeholder={t("Search…")} value={q} onChange={(e) => setQ(e.target.value)} />
 
       <ul className="grid gap-3">

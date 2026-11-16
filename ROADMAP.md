@@ -39,10 +39,11 @@ Priorities as of 2026-09-26. Build one batch at a time. The direction behind the
 - [x] Occasions (weddings, birthdays) in Brain → Dates, out of the calendar except our own; 28 weddings imported
 - [x] Paste a list (`251025 Names`, `*` = only me, `//` = no longer celebrated)
 - [x] Reminder the evening before, only to the people concerned
-- [ ] People and tastes (who they are to us, likes, gift ideas); link occasions to people
+- [x] People and tastes (who they are to us, likes, gift ideas, gifts given): Brain → People; a person's page shows their dates
+- [ ] Link the 28 imported weddings to people (today matched by name); gift ideas in the evening reminder
 - [ ] Drafted message in the right language in the reminder (needs `ANTHROPIC_API_KEY`)
 - [x] Connector tools `get_occasions`, `add_occasion`
-- [ ] Connector tools `remember`, `recall`, `get_person`
+- [x] Connector tools `remember`, `recall`, `get_person`, `set_person`, `update_memory`
 - [x] Travels: countries each of us has been to, world map by person (Today tile), connector `get_travels` / `add_countries`
 - [x] Travels timeline: trips by month with who went (Me → My trips), feeds the map; connector `add_trips`
 - [x] Travel guide for Thailand (Bangkok, Phuket): cards, words, places, quests and quiz, XP / levels / badges (`/travels/guide`)
