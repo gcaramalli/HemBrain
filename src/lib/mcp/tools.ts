@@ -4,7 +4,8 @@ import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { mcpContext, type McpContext } from "./context";
 import { categoryById, categoryOrder, guessCategory } from "@/lib/categories";
-import { familyBirthdays } from "@/lib/occasions";
+import { daysAway, familyBirthdays, nextAnniversary } from "@/lib/occasions";
+import { byKind, CIRCLE_IDS, findPerson, fold, matches, MEMORY_KIND_IDS, occasionsOf } from "@/lib/people";
 import { countryName, findCountry } from "@/lib/countries";
 import { planTrip } from "@/lib/trips";
 import { occurrenceDates, RECURRENCES, type Recurrence } from "@/lib/recurrence";
@@ -17,7 +18,7 @@ import { CLOTHES_CATEGORIES, CLOTHES_CATEGORY_IDS, coldSeason, missingEssentials
 import { findByName, HISTORY_DAYS, meetingAgenda, nextMeetingDate, peopleSummary, personItems, sortItems } from "@/lib/work";
 import { isEqual, settleUp } from "@/lib/expenses";
 import { deadlines, nextRenewal, PAPER_CATEGORIES, PAPER_CATEGORY_IDS, PERIOD_IDS, upcomingDeadlines, yearlyCost } from "@/lib/papers";
-import type { KidClothes, KidSleep, Paper, WorkItem, WorkMeeting, WorkPerson, WorkProject } from "@/lib/types";
+import type { KidClothes, KidSleep, Paper, Person, WorkItem, WorkMeeting, WorkPerson, WorkProject } from "@/lib/types";
 
 // Tools exposed to Claude through the family connector. Every query is
 // scoped to the caller's family (see ./context.ts) because the service-role
@@ -59,6 +60,14 @@ Routing:
 - What the kid ate and how it went ("Charlie refused the fish"): log_meal with who = the kid and reaction. Ideas for the
   kid's meals: get_meals with who = the kid (loves / refuses) and suggest what fits their age and balances their week.
 - Family facts (pickup rules, allergies, contacts): get_notes / add_note.
+- People around the family and what we know about them ("Anna loves ceramics", "Léo is Paul's son, he turns 4 in May",
+  "we gave Mum a scarf for Christmas", "what do we give Paul's son?", "who is Karin again?"): remember (one short sentence
+  per thing, with who it is about; pick the kind) / get_person (everything about someone, before a gift idea or a message)
+  / recall (search the whole memory by words) / set_person (who they are to us, their parents, the language to write in).
+  When the user mentions in passing a taste, a size, a gift idea or a gift given, save it with remember without being
+  asked, and say so in one line. Never invent a taste: only what was said. For a gift, read get_person first (likes,
+  dislikes, ideas, what was already given, age next birthday), then suggest. Facts about the household itself (codes,
+  addresses, rules) stay in notes.
 - Travels ("we went to Lisbon in July with Jennie", "Jenny has been to Japan", "where haven't we been?", "when did I
   last go to London?", trip ideas): get_travels (countries per person + the trips timeline). A dated trip → add_trips
   (ticks the country for everyone who went); a country with no date → add_countries. Pass countries as ISO codes or names.
@@ -350,6 +359,70 @@ const itemSchema = z.object({
   quantity: z.string().optional().describe("e.g. '2', '1 kg'"),
 });
 
+// ---- People and memory
+
+type BookPerson = Pick<Person, "id" | "name" | "relation" | "circle" | "parent_ids" | "language" | "notes">;
+type PeopleBook = { people: BookPerson[]; members: { id: string; name: string; birthdate: string | null }[] };
+
+// Everyone a memory can be about: the people around the family, and its own members.
+async function loadPeopleBook(): Promise<PeopleBook> {
+  const db = createAdminClient();
+  const [p, m] = await Promise.all([
+    db.from("people").select("id, name, relation, circle, parent_ids, language, notes").eq("family_id", familyId()).order("name"),
+    db.from("members").select("id, name, birthdate").eq("family_id", familyId()).order("created_at"),
+  ]);
+  if (p.error) throw new Error(p.error.message);
+  return { people: (p.data ?? []) as BookPerson[], members: m.data ?? [] };
+}
+
+// One person by name; several possible → ask rather than guess.
+function pickPerson(people: BookPerson[], name: string) {
+  const hit = findPerson(people, name);
+  if (hit) return hit;
+  const close = people.filter((p) => fold(p.name).includes(fold(name)));
+  if (close.length > 1) throw new Error(`Several people match "${name}": ${close.map((p) => p.name).join(", ")}. Ask which one.`);
+  return undefined;
+}
+
+// A family member (by first name) or a person; null when nobody has that name.
+function lookupWho(book: PeopleBook, name: string) {
+  const member = book.members.find((m) => fold(m.name) === fold(name));
+  if (member) return { id: member.id, name: member.name, member: true };
+  const person = pickPerson(book.people, name);
+  return person ? { id: person.id, name: person.name, member: false } : null;
+}
+
+// Names → ids, creating the people nobody knows yet (their names are pushed to `created`).
+async function resolveWho(book: PeopleBook, names: string[], created: string[], peopleOnly = false) {
+  const person_ids: string[] = [];
+  const member_ids: string[] = [];
+  for (const raw of names) {
+    const name = raw.trim();
+    if (!name) continue;
+    const hit = lookupWho(book, name);
+    if (hit?.member && peopleOnly) throw new Error(`${hit.name} is a family member, not a person to link here.`);
+    if (hit) {
+      (hit.member ? member_ids : person_ids).push(hit.id);
+      continue;
+    }
+    const { data, error } = await createAdminClient()
+      .from("people")
+      .insert({ family_id: familyId(), name, created_by: createdBy() })
+      .select("id, name, relation, circle, parent_ids, language, notes")
+      .single();
+    if (error) throw new Error(error.message);
+    book.people.push(data as BookPerson);
+    created.push(name);
+    person_ids.push(data.id);
+  }
+  return { person_ids: [...new Set(person_ids)], member_ids: [...new Set(member_ids)] };
+}
+
+const namesOf = (book: PeopleBook, m: { person_ids: string[]; member_ids: string[] }) => [
+  ...m.member_ids.map((id) => book.members.find((x) => x.id === id)?.name),
+  ...m.person_ids.map((id) => book.people.find((x) => x.id === id)?.name),
+].filter((n): n is string => !!n);
+
 export function registerTools(server: McpServer) {
   server.registerTool(
     "get_family_context",
@@ -361,12 +434,13 @@ export function registerTools(server: McpServer) {
     async () => {
       const db = createAdminClient();
       const fid = familyId();
-      const [members, lists, notes] = await Promise.all([
+      const [members, lists, notes, people] = await Promise.all([
         db.from("members").select("name, birthdate, notes, dropoff_time, pickup_time, care_place").eq("family_id", fid).order("created_at"),
         db.from("lists").select("name, kind").eq("family_id", fid).order("position"),
         db.from("notes").select("title, body").eq("family_id", fid).eq("pinned", true),
+        db.from("people").select("name, relation").eq("family_id", fid).order("name").limit(300),
       ]);
-      return text({ members: members.data, lists: lists.data, pinned_notes: notes.data });
+      return text({ members: members.data, lists: lists.data, pinned_notes: notes.data, people_around_us: people.data ?? [] });
     },
   );
 
@@ -823,6 +897,203 @@ export function registerTools(server: McpServer) {
         .insert({ ...r, tags: (r.tags ?? []).map((t) => t.toLowerCase()), family_id: familyId(), created_by: createdBy() });
       if (error) throw new Error(error.message);
       return text(`Saved recipe "${r.title}".`);
+    },
+  );
+
+  // ---- People and memory: who is around the family and what we know about them
+
+  server.registerTool(
+    "remember",
+    {
+      title: "Remember something about someone",
+      description:
+        "Save things worth remembering about people: tastes, gift ideas, what we gave, sizes, allergies, facts, moments. One short sentence per item, each about one or several people (friends, relatives, their children, or family members). A name nobody knows yet becomes a new person: then ask who they are and call set_person.",
+      inputSchema: z.object({
+        items: z
+          .array(
+            z.object({
+              text: z.string().min(1).max(2000).describe("One thing, e.g. 'Loves ceramics' or 'We gave him a wooden train for his 3rd birthday'"),
+              kind: z.enum(MEMORY_KIND_IDS).optional().describe("like, dislike, gift_idea, gift_given, size, allergy, fact (default) or moment (something that happened)"),
+              about: z.array(z.string().min(1)).min(1).max(10).describe("Names of who it is about"),
+              date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("When it happened (gift_given, moment), YYYY-MM-DD"),
+            }),
+          )
+          .min(1)
+          .max(30),
+      }),
+    },
+    async ({ items }) => {
+      const book = await loadPeopleBook();
+      const created: string[] = [];
+      const rows = [];
+      for (const it of items) {
+        const who = await resolveWho(book, it.about, created);
+        rows.push({ family_id: familyId(), kind: it.kind ?? "fact", body: it.text.trim(), happened_on: it.date ?? null, created_by: createdBy(), ...who });
+      }
+      const { error } = await createAdminClient().from("memories").insert(rows);
+      if (error) throw new Error(error.message);
+      return text({
+        remembered: items.map((it) => `${it.about.join(", ")}: ${it.text}`),
+        new_people: created.length ? { names: created, next: "Ask who they are to the family and save it with set_person." } : undefined,
+      });
+    },
+  );
+
+  server.registerTool(
+    "recall",
+    {
+      title: "Search the family's memory",
+      description:
+        "Search everything the family has written down: memories about people, the people themselves, notes, and yearly dates. Pass words to look for (any language, accents don't matter), and / or a person, and / or a kind. For everything about one person, get_person is better.",
+      inputSchema: z.object({
+        query: z.string().optional().describe("Words to look for, e.g. 'ceramics' or 'dentist'"),
+        about: z.string().optional().describe("Only what concerns this person"),
+        kind: z.enum(MEMORY_KIND_IDS).optional(),
+        limit: z.number().int().min(1).max(200).optional().describe("Most memories returned, default 50"),
+      }),
+    },
+    async ({ query, about, kind, limit }) => {
+      const db = createAdminClient();
+      const book = await loadPeopleBook();
+      const who = about ? lookupWho(book, about) : null;
+      if (about && !who) throw new Error(`Nobody called "${about}" yet. People: ${book.people.map((p) => p.name).join(", ") || "none"}`);
+      const [m, n, o] = await Promise.all([
+        db.from("memories").select("id, kind, body, person_ids, member_ids, happened_on, created_at").eq("family_id", familyId()).order("created_at", { ascending: false }).limit(2000),
+        db.from("notes").select("title, body, tags").eq("family_id", familyId()),
+        db.from("occasions").select("kind, title, date, ended").eq("family_id", familyId()),
+      ]);
+      if (m.error) throw new Error(m.error.message);
+      const q = query?.trim();
+      const memories = (m.data ?? [])
+        .map((x) => ({ ...x, about: namesOf(book, x) }))
+        .filter((x) => !kind || x.kind === kind)
+        .filter((x) => !who || (who.member ? x.member_ids.includes(who.id) : x.person_ids.includes(who.id)))
+        .filter((x) => !q || matches(`${x.body} ${x.about.join(" ")}`, q))
+        .slice(0, limit ?? 50)
+        .map((x) => ({ id: x.id, kind: x.kind, text: x.body, about: x.about, date: x.happened_on, saved_on: x.created_at.slice(0, 10) }));
+      // The rest only when searching words: people, notes and dates that mention them.
+      return text({
+        memories,
+        people: q ? book.people.filter((p) => matches(`${p.name} ${p.relation ?? ""} ${p.notes ?? ""}`, q)).map((p) => ({ name: p.name, relation: p.relation })) : undefined,
+        notes: q ? (n.data ?? []).filter((x) => matches(`${x.title} ${x.body} ${x.tags.join(" ")}`, q)).map((x) => ({ title: x.title, body: x.body })) : undefined,
+        dates: q ? (o.data ?? []).filter((x) => matches(x.title, q)).map((x) => ({ kind: x.kind, who: x.title, date: x.date, no_longer_celebrated: x.ended || undefined })) : undefined,
+      });
+    },
+  );
+
+  server.registerTool(
+    "get_person",
+    {
+      title: "Everything about one person",
+      description:
+        "Who someone is to the family and all we know about them: relation, parents and children, language to write in, tastes, gift ideas, what we already gave, moments, and their yearly dates (birthday, wedding) with how old next time. Use it before suggesting a gift or drafting a message. No name = the list of everyone.",
+      inputSchema: z.object({ name: z.string().optional().describe("Name or first name; leave out for the list of people") }),
+    },
+    async ({ name }) => {
+      const db = createAdminClient();
+      const book = await loadPeopleBook();
+      if (!name?.trim()) {
+        return text({
+          family: book.members.map((x) => x.name),
+          people: book.people.map((p) => ({ name: p.name, relation: p.relation, circle: p.circle })),
+        });
+      }
+      const who = lookupWho(book, name);
+      if (!who) throw new Error(`Nobody called "${name}" yet. People: ${book.people.map((p) => p.name).join(", ") || "none"}. Create them with set_person or remember.`);
+      const [m, o] = await Promise.all([
+        db.from("memories").select("id, kind, body, person_ids, member_ids, happened_on, created_at").eq("family_id", familyId()).contains(who.member ? "member_ids" : "person_ids", [who.id]),
+        db.from("occasions").select("kind, title, date, ended, notes, person_ids").eq("family_id", familyId()),
+      ]);
+      if (m.error) throw new Error(m.error.message);
+      const known = Object.fromEntries(
+        byKind(m.data ?? []).map((g) => [
+          g.kind.id,
+          g.items.map((x) => ({ id: x.id, text: x.body, date: x.happened_on ?? undefined, also_about: namesOf(book, x).filter((n) => n !== who.name) })),
+        ]),
+      );
+      const today = new Date(`${workToday()}T12:00:00`);
+      const date = (d: string, kind: string, title: string, notes?: string | null) => {
+        const { day, years } = nextAnniversary(d, today);
+        return { kind, who: title, original_date: d, in_days: daysAway(day, today), years_next_time: years, notes: notes ?? undefined };
+      };
+      if (who.member) {
+        const me = book.members.find((x) => x.id === who.id)!;
+        return text({ name: me.name, in_the_family: true, birthday: me.birthdate ? date(me.birthdate, "birthday", me.name) : null, known });
+      }
+      const p = book.people.find((x) => x.id === who.id)!;
+      return text({
+        name: p.name,
+        relation: p.relation,
+        circle: p.circle,
+        parents: p.parent_ids.map((id) => book.people.find((x) => x.id === id)?.name).filter(Boolean),
+        children: book.people.filter((x) => x.parent_ids.includes(p.id)).map((x) => x.name),
+        write_in: p.language,
+        notes: p.notes,
+        dates: occasionsOf(p, o.data ?? []).filter((x) => !x.ended).map((x) => date(x.date, x.kind, x.title, x.notes)),
+        known,
+      });
+    },
+  );
+
+  server.registerTool(
+    "set_person",
+    {
+      title: "Add or update a person",
+      description:
+        "Create someone around the family, or change what we know about who they are: how we know them (in the family's words), their circle, their parents (for a friend's child), the language to write to them in, free notes. Found by name; only the fields you pass change. Tastes and gift ideas go in remember, not here.",
+      inputSchema: z.object({
+        name: z.string().min(1).max(120),
+        new_name: z.string().min(1).max(120).optional().describe("Rename, e.g. to add a family name"),
+        relation: z.string().max(200).optional().describe("e.g. \"Guillaume's best man\", \"Charlie's friend from preschool\""),
+        circle: z.enum(CIRCLE_IDS).optional().describe("relative, friend, child (a friend's or relative's kid) or other"),
+        parents: z.array(z.string()).max(4).optional().describe("For a child: their parents' names (created if new)"),
+        language: z.string().max(40).optional().describe("Language to write to them in"),
+        notes: z.string().max(4000).optional(),
+      }),
+    },
+    async ({ name, new_name, relation, circle, parents, language, notes }) => {
+      const db = createAdminClient();
+      const book = await loadPeopleBook();
+      if (book.members.some((x) => fold(x.name) === fold(name))) throw new Error(`${name} is a family member: their profile is in the app's family settings. Use remember for what to know about them.`);
+      const created: string[] = [];
+      const fields: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (new_name !== undefined) fields.name = new_name.trim();
+      if (relation !== undefined) fields.relation = relation.trim() || null;
+      if (circle !== undefined) fields.circle = circle;
+      if (language !== undefined) fields.language = language.trim() || null;
+      if (notes !== undefined) fields.notes = notes.trim() || null;
+      if (parents !== undefined) fields.parent_ids = (await resolveWho(book, parents, created, true)).person_ids;
+      const hit = pickPerson(book.people, name);
+      const { error } = hit
+        ? await db.from("people").update(fields).eq("id", hit.id).eq("family_id", familyId())
+        : await db.from("people").insert({ ...fields, name: (new_name ?? name).trim(), circle: circle ?? (parents?.length ? "child" : "friend"), family_id: familyId(), created_by: createdBy() });
+      if (error) throw new Error(error.message);
+      return text({ [hit ? "updated" : "created"]: (new_name ?? hit?.name ?? name).trim(), new_people: created.length ? created : undefined });
+    },
+  );
+
+  server.registerTool(
+    "update_memory",
+    {
+      title: "Correct or remove a memory",
+      description: "Change the text, kind or date of something remembered, or remove it when it is wrong or no longer true (only when asked). The id comes from recall or get_person.",
+      inputSchema: z.object({
+        id: z.string().uuid(),
+        text: z.string().min(1).max(2000).optional(),
+        kind: z.enum(MEMORY_KIND_IDS).optional(),
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        remove: z.boolean().optional(),
+      }),
+    },
+    async ({ id, text: body, kind, date, remove }) => {
+      const db = createAdminClient();
+      const q = remove
+        ? db.from("memories").delete().eq("id", id).eq("family_id", familyId()).select("body")
+        : db.from("memories").update({ ...(body ? { body: body.trim() } : {}), ...(kind ? { kind } : {}), ...(date ? { happened_on: date } : {}) }).eq("id", id).eq("family_id", familyId()).select("body");
+      const { data, error } = await q;
+      if (error) throw new Error(error.message);
+      if (!data?.length) throw new Error("No memory with this id in the family.");
+      return text(remove ? `Removed: "${data[0].body}"` : `Now: "${data[0].body}"`);
     },
   );
 

@@ -8,7 +8,7 @@ next steps in `ROADMAP.md`.
 Next.js 16 + Supabase. All data lives in Supabase Postgres; every table is scoped by `family_id` and
 protected by RLS (`private.my_family_id()`, in a schema the API does not expose).
 
-Supabase project: **Caramalli Familly brain** (`jvzwbguwoafayxmdirnj`, in Jenny's org, eu-west-1). Migrations 0001–0028 are applied (0029–0030 = partner notifications, see `docs/notifications.md`; 0031 = events about several people; 0032 = watchlist, to apply; 0033 = super admin signup push + weekly report, applied; 0034 = travel journal, 0035 = kid off preschool until a date). Sign-up is open (multi-family); joining a family needs an invite code (`invites.code`, link `/signup?invite=…`), see `handle_new_user()` in `0004_dashboard_users_join_invited_family.sql` (accounts created from the Supabase dashboard have no metadata and join the family that invited their email). A user's family = `profiles.family_id`.
+Supabase project: **Caramalli Familly brain** (`jvzwbguwoafayxmdirnj`, in Jenny's org, eu-west-1). Migrations 0001–0028 are applied (0029–0030 = partner notifications, see `docs/notifications.md`; 0031 = events about several people; 0032 = watchlist, to apply; 0033 = super admin signup push + weekly report, applied; 0034 = travel journal, 0035 = kid off preschool until a date, 0036 = people and memories, to apply). Sign-up is open (multi-family); joining a family needs an invite code (`invites.code`, link `/signup?invite=…`), see `handle_new_user()` in `0004_dashboard_users_join_invited_family.sql` (accounts created from the Supabase dashboard have no metadata and join the family that invited their email). A user's family = `profiles.family_id`.
 
 ## Adding things for the family
 
@@ -94,7 +94,17 @@ Rules of thumb:
 - `restock_suggestions` — view: average interval between purchases → `next_due_on` (needs ≥2 purchases)
 - `recipes` — `ingredients text[]`, `tags text[]`, `favorite`, `kid_friendly`
 - `meals` — what we ate: `eaten_on`, `slot` (breakfast/lunch/dinner/snack), `title`, optional `recipe_id`, `food_groups` (ids in `src/lib/meals.ts`, for balance), `place` (home/out/takeaway), `member_ids` (empty = everyone). Meals tab → "What we ate", filtered All / with the kids (no `member_ids` or a kid in them) / parents only; connector `log_meal` / `get_meals`, `dinner_ideas` returns last week's meals, `plan_groceries` gives Claude the habits + what runs out to plan the shopping (no in-app prediction on purpose)
-- `notes` — the family brain
+- `notes` — the family brain (household facts: codes, addresses, rules)
+- `people` / `memories` (0036) — the memory of the people around the family (Brain → People, `src/components/people-panel.tsx`,
+  shared helpers in `src/lib/people.ts`). `people` = friends, relatives, their children: `name` (unique per family, case-insensitive),
+  `relation` (free text, in the family's words), `circle` (relative/friend/child/other), `parent_ids` (other people, for a
+  friend's child), `language` (to write to them in), `notes`. The family's own members stay in `members`. `memories` = one
+  sentence each, `kind` like/dislike/gift_idea/gift_given/size/allergy/fact/moment, about `person_ids` and / or `member_ids`,
+  optional `happened_on`. A person's page shows their yearly dates: occasions linked through `occasions.person_ids`, or
+  naming them as a whole word (`occasionsOf`; older occasions are not linked). Mostly filled by talking: connector `remember`
+  (unknown names become people), `recall` (searches memories, people, notes and dates, accents ignored), `get_person`
+  (everything about someone, before a gift idea or a message), `set_person`, `update_memory`. Names resolve with `findPerson`
+  (exact, then a whole word, then a unique prefix); several matches → the tool asks rather than guesses.
 - `private_boards` / `private_items` — each account's private space (top of the Me tab, `src/components/private-space.tsx`): tiles that are a
   list, a note or gift ideas (`private_items.person` / `occasion`, grouped by person; tiles show no content preview), RLS on `profile_id = auth.uid()` so nobody else sees them, not even the admin. Not exposed through the
   connector on purpose (it uses the service role and speaks for the whole family).
@@ -185,7 +195,7 @@ Rules of thumb:
   (`src/lib/modules.ts`) used only to find your way — tab bar, `HubTile`s, `ModuleIcon` next to page titles.
   Buttons and text stay ink. Dark mode is night blue.
 - Look: bold Geist titles, surfaces float on the page (`--lift` shadow, no outline), pill buttons, segmented
-  controls as a pill on a soft track, floating rounded tab bar with coloured duotone icons,
+  controls as a pill on a soft track, floating rounded tab bar with coloured duotone icons (one highlight pill that slides to the tapped tab at once, `AppShell`),
   the page fading into the background beneath it. A person shows as a dot in their colour + name (`MemberBadge`).
 - Icons: `lucide-react` line icons for the interface (tabs, buttons, section titles); emoji only for what
   people choose themselves (a kid's emoji, private tiles, gifts).

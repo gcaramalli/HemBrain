@@ -14,6 +14,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { profile, family, kids, me, t } = useFamily();
   const [generation, setGeneration] = useState(0);
   const refresh = useCallback(() => setGeneration((g) => g + 1), []);
+  // The tab just tapped: the pill slides to it at once, before the screen has arrived.
+  const [tapped, setTapped] = useState<string | null>(null);
+  const [seen, setSeen] = useState(pathname);
+  if (seen !== pathname) {
+    // Arrived somewhere (the tapped tab or anywhere else): the address decides again.
+    setSeen(pathname);
+    setTapped(null);
+  }
   // Service worker: needed for reminders (push notifications).
   useEffect(() => {
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
@@ -57,6 +65,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     { href: "/me", label: t("Me"), Icon: MODULES.me.Icon, color: MODULES.me.color },
   ];
 
+  // While the tapped screen loads, the tapped tab is the active one.
+  const activeIndex = tabs.findIndex((tab) => (tapped ? tab.href === tapped : isActive(tab.href)));
+
   return (
     <ToastProvider>
       <div className="mx-auto flex min-h-dvh max-w-xl flex-col">
@@ -88,21 +99,33 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         />
         <nav className="fixed inset-x-0 bottom-0 z-10 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
           <ul
-            className="mx-auto grid max-w-xl rounded-[26px] bg-surface/90 px-1 backdrop-blur-xl"
+            className="relative mx-auto grid max-w-xl rounded-[26px] bg-surface/90 px-1 backdrop-blur-xl"
             style={{ boxShadow: "0 10px 30px -12px rgba(20,24,34,.35), 0 1px 2px rgba(20,24,34,.08)", border: "1px solid var(--edge)", gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
           >
-            {tabs.map((tab) => {
-              const active = isActive(tab.href);
+            {/* One pill for the whole bar: it slides under the tab that is open, in that tab's colour. */}
+            <li
+              aria-hidden
+              className="pointer-events-none absolute inset-y-0 left-1 flex justify-center pt-1.5 transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.3,1.3,0.5,1)] motion-reduce:transition-none"
+              style={{ width: `calc((100% - 0.5rem) / ${tabs.length})`, transform: `translateX(${Math.max(activeIndex, 0) * 100}%)`, opacity: activeIndex < 0 ? 0 : 1 }}
+            >
+              <span
+                className="h-8 w-14 rounded-full transition-colors duration-300"
+                style={{ background: `color-mix(in srgb, ${tabs[Math.max(activeIndex, 0)].color} 20%, transparent)` }}
+              />
+            </li>
+            {tabs.map((tab, i) => {
+              const active = i === activeIndex;
               return (
                 <li key={tab.href}>
                   <Link
                     href={tab.href}
                     aria-current={active ? "page" : undefined}
-                    className={`flex flex-col items-center gap-0.5 py-1.5 text-[10.5px] ${active ? "font-semibold text-foreground" : "text-muted"}`}
+                    onClick={() => setTapped(isActive(tab.href) && pathname === tab.href ? null : tab.href)}
+                    className={`relative flex flex-col items-center gap-0.5 py-1.5 text-[10.5px] ${active ? "font-semibold text-foreground" : "text-muted"}`}
                   >
                     <span
-                      className="flex h-8 w-14 items-center justify-center rounded-full transition-colors"
-                      style={{ color: tab.color, background: active ? `color-mix(in srgb, ${tab.color} 20%, transparent)` : undefined }}
+                      className="flex h-8 w-14 items-center justify-center rounded-full"
+                      style={{ color: tab.color }}
                     >
                       <tab.Icon size={21} strokeWidth={2.25} fill="currentColor" fillOpacity={active ? 0.3 : 0.18} />
                     </span>
