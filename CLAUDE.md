@@ -195,7 +195,7 @@ Rules of thumb:
   (`src/lib/modules.ts`) used only to find your way — tab bar, `HubTile`s, `ModuleIcon` next to page titles.
   Buttons and text stay ink. Dark mode is night blue.
 - Look: bold Geist titles, surfaces float on the page (`--lift` shadow, no outline), pill buttons, segmented
-  controls as a pill on a soft track, floating rounded tab bar with coloured duotone icons,
+  controls as a pill on a soft track, floating rounded tab bar with coloured duotone icons (one highlight pill that slides to the tapped tab at once, `AppShell`),
   the page fading into the background beneath it. A person shows as a dot in their colour + name (`MemberBadge`).
 - Icons: `lucide-react` line icons for the interface (tabs, buttons, section titles); emoji only for what
   people choose themselves (a kid's emoji, private tiles, gifts).
